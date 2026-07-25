@@ -13,7 +13,7 @@ function isAdmin() {
 
 function requireLogin() {
     if (!isLogged()) {
-        header("Location: login.php");
+        header("Location: /apteka/public/login.php");
         exit;
     }
 }
@@ -22,6 +22,25 @@ function requireAdmin() {
     requireLogin();
     if (!isAdmin()) {
         die("Доступ запрещён");
+    }
+}
+
+function csrfToken() {
+    if (empty($_SESSION['csrf'])) {
+        $_SESSION['csrf'] = bin2hex(random_bytes(32));
+    }
+    return $_SESSION['csrf'];
+}
+
+function csrfField() {
+    return '<input type="hidden" name="csrf" value="' . htmlspecialchars(csrfToken()) . '">';
+}
+
+function checkCsrf() {
+    $token = $_POST['csrf'] ?? '';
+    if (!$token || !hash_equals($_SESSION['csrf'] ?? '', $token)) {
+        http_response_code(403);
+        die("Ошибка безопасности: недействительный токен. Обновите страницу и попробуйте снова.");
     }
 }
 
