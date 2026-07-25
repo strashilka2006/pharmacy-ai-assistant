@@ -878,19 +878,24 @@ function closeAiModal(e){if(e&&e.target!==document.getElementById('aiChatModal')
 document.getElementById('aiQuickForm').addEventListener('submit',function(e){e.preventDefault();const msg=document.getElementById('aiQuickInput').value.trim();if(!msg)return;openAiModal(msg);document.getElementById('aiQuickInput').value=''});
 document.getElementById('aiModalForm').addEventListener('submit',function(e){e.preventDefault();const msg=document.getElementById('aiModalInput').value.trim();if(!msg)return;sendAiMessage(msg);document.getElementById('aiModalInput').value=''});
 
+function esc(s){
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
 function addMsg(role,text,products){
     const box=document.getElementById('aiChatMessages'),wrap=document.createElement('div');
     wrap.className='ai-msg '+role;
     const inner=document.createElement('div');
     inner.style.cssText='display:flex;flex-direction:column;align-items:flex-start;gap:6px;max-width:85%;';
     const bubble=document.createElement('div');bubble.className='bubble';bubble.style.maxWidth='100%';
-    bubble.innerHTML=text.replace(/\n/g,'<br>');inner.appendChild(bubble);
+    bubble.innerHTML=esc(text).replace(/\n/g,'<br>');inner.appendChild(bubble);
     if(role==='bot'&&products&&products.length){
         products.forEach(p=>{
             const col=document.createElement('div');
             col.style.cssText='display:flex;flex-direction:column;align-items:flex-start;width:100%;';
             const chip=document.createElement('a');chip.href='product.php?id='+p.id;chip.target='_blank';chip.className='product-chip';
-            chip.innerHTML=`<img src="${p.image||'https://via.placeholder.com/48'}" alt="${p.name}" loading="lazy" width="44" height="44"><div><div class="pn">${p.name}</div><div class="pp">${Number(p.price).toLocaleString('ru-RU')} ₽</div></div>`;
+            chip.innerHTML=`<img src="${esc(p.image)||'https://placehold.co/48'}" alt="${esc(p.name)}" loading="lazy" width="44" height="44"><div><div class="pn">${esc(p.name)}</div><div class="pp">${Number(p.price).toLocaleString('ru-RU')} ₽</div></div>`;
             col.appendChild(chip);
             const defs=[{key:'usage_info',icon:'💊',label:'Способ употребления'},{key:'composition',icon:'🧪',label:'Состав'},{key:'contraindications',icon:'⚠️',label:'Противопоказания'}].filter(i=>p[i.key]);
             if(defs.length){
@@ -903,7 +908,7 @@ function addMsg(role,text,products){
                         ap&&ap.classList.remove('active');apl&&apl.remove();
                         pill.classList.add('active');
                         const panel=document.createElement('div');panel.className='detail-panel';
-                        panel.innerHTML=`<b>${item.icon} ${item.label}</b>${p[item.key]}`;
+                        panel.innerHTML=`<b>${item.icon} ${item.label}</b>${esc(p[item.key])}`;
                         pw.after(panel);ap=pill;apl=panel;box.scrollTop=box.scrollHeight;
                     });
                     pw.appendChild(pill);
