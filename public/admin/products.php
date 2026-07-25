@@ -63,11 +63,14 @@ $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <td class="text-end pe-4">
                             <a href="product_edit.php?id=<?= $p["id"] ?>" 
                                class="btn btn-outline-primary btn-sm rounded-pill px-3">Редактировать</a>
-                            <a href="product_delete.php?id=<?= $p["id"] ?>" 
-                               class="btn btn-outline-danger btn-sm rounded-pill px-3 ms-2"
-                               onclick="return confirm('Удалить товар «<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>»?')">
-                                Удалить
-                            </a>
+                            <form method="post" action="product_delete.php" class="d-inline"
+                                  onsubmit="return confirm('Удалить товар «<?= htmlspecialchars($p['name'], ENT_QUOTES) ?>»?')">
+                                <?= csrfField() ?>
+                                <input type="hidden" name="id" value="<?= $p["id"] ?>">
+                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 ms-2">
+                                    Удалить
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 <?php endforeach; ?>
