@@ -44,31 +44,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
         $address = trim($_POST['address'] ?? $user['address'] ?? '');
 
         if ($name && $phone && $address) {
+            $order_id = null;
+
+            // 1. Создаём заказ. Корзину пока НЕ трогаем.
             $pdo->beginTransaction();
             try {
-                // Создаём заказ
-                $stmt = $pdo->prepare("INSERT INTO orders (user_id, total, status, name, phone, address) 
+                $stmt = $pdo->prepare("INSERT INTO orders (user_id, total, status, name, phone, address)
                                        VALUES (?, ?, 'new', ?, ?, ?)");
                 $stmt->execute([$user_id, $total, $name, $phone, $address]);
                 $order_id = $pdo->lastInsertId();
 
-                // Переносим товары в order_items
                 foreach ($items as $item) {
-                    $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, qty, price) 
+                    $stmt = $pdo->prepare("INSERT INTO order_items (order_id, product_id, qty, price)
                                            VALUES (?, ?, ?, ?)");
                     $stmt->execute([$order_id, $item['product_id'], $item['qty'], $item['price']]);
                 }
 
-                // Очищаем корзину
-                $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ?");
-                $stmt->execute([$user_id]);
-
                 $pdo->commit();
+            } catch (Exception $e) {
+                $pdo->rollBack();
+                $order_id = null;
+                $error = "Произошла ошибка при оформлении заказа. Попробуйте позже.";
+            }
 
-                // === ЮКАССА: создаём платёж ===
-                $shopId    = '1343344';    // из личного кабинета → Настройки
-                $secretKey = 'test_Pkb0BgtKZneMvQ-JIB3-7FR4vBTYlGhO_EwgAp2YFIE'; // Интеграция → Ключи API
-
+            // 2. Создаём платёж в ЮKassa
+            if ($order_id) {
                 $paymentData = json_encode([
                     'amount' => [
                         'value'    => number_format($total, 2, '.', ''),
@@ -86,8 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 $ch = curl_init('https://api.yookassa.ru/v3/payments');
                 curl_setopt_array($ch, [
                     CURLOPT_RETURNTRANSFER => true,
-                    CURLOPT_SSL_VERIFYPEER => false,
-                    CURLOPT_USERPWD        => $shopId . ':' . $secretKey,
+                    CURLOPT_USERPWD        => $yookassa['shop_id'] . ':' . $yookassa['secret_key'],
                     CURLOPT_HTTPHEADER     => [
                         'Content-Type: application/json',
                         'Idempotence-Key: ' . uniqid('order_' . $order_id . '_', true),
@@ -99,26 +98,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                 curl_close($ch);
 
                 if (!empty($response['confirmation']['confirmation_url'])) {
-                    // Сохраняем payment_id от ЮКассы в заказ
+                    // 3. Платёж создан — только теперь чистим корзину
                     $stmt = $pdo->prepare("UPDATE orders SET payment_id = ? WHERE id = ?");
                     $stmt->execute([$response['id'], $order_id]);
 
-                    // Редирект на страницу оплаты с QR-кодом
+                    $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ?");
+                    $stmt->execute([$user_id]);
+
                     $confirmUrl = urlencode($response['confirmation']['confirmation_url']);
                     header("Location: payment_pending.php?order_id=$order_id&pay_url=$confirmUrl");
                     exit;
-                } else {
-                    // Если API не ответил — откат заказа
-                    $pdo->beginTransaction();
-                    $pdo->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$order_id]);
-                    $pdo->prepare("DELETE FROM orders WHERE id = ?")->execute([$order_id]);
-                    $pdo->commit();
-                    $error = "Ошибка при создании платежа. Попробуйте ещё раз.";
                 }
-                exit;
-            } catch (Exception $e) {
-                $pdo->rollBack();
-                $error = "Произошла ошибка при оформлении заказа. Попробуйте позже.";
+
+                // Платёж не создался — убираем заказ, корзина осталась на месте
+                $pdo->prepare("DELETE FROM order_items WHERE order_id = ?")->execute([$order_id]);
+                $pdo->prepare("DELETE FROM orders WHERE id = ?")->execute([$order_id]);
+                $error = "Ошибка при создании платежа. Попробуйте ещё раз.";
             }
         } else {
             $error = "Заполните все обязательные поля";
