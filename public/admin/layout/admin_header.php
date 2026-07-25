@@ -4,6 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 require __DIR__ . "/../../../app/bootstrap.php";
+requireAdmin();
 ?>
 <!doctype html>
 <html lang="ru">
