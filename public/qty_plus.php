@@ -17,5 +17,10 @@ if ($cart_id > 0) {
 }
 
 $return = $_GET['return'] ?? 'cart.php';
+
+if (!preg_match('~^[a-z0-9_]+\.php(\?[^\s]*)?$~i', $return)) {
+    $return = 'cart.php';
+}
+
 header("Location: $return");
 exit;
