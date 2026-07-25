@@ -15,6 +15,12 @@ $smtp = [
     'from_name' => 'AptekaWebSite',
 ];
 
+// ЮKassa
+$yookassa = [
+    'shop_id'    => '1343344',
+    'secret_key' => '',
+];
+
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
