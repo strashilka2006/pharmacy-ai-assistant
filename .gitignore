@@ -1,0 +1,7 @@
+app/config.php
+app/mail_error.txt
+*.log
+vendor/
+.vscode/
+.idea/
+.DS_Store
