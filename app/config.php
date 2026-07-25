@@ -1,10 +1,19 @@
 <?php
-// app/config.php — ТОЛЬКО подключение к БД, ничего больше!
+// app/config.php — подключение к БД и настройки почты
 
 $host = "localhost";
 $dbname = "apteka";
 $user = "root";
 $pass = "";
+
+// Почта
+$smtp = [
+    'host'      => 'smtp.gmail.com',
+    'user'      => '',
+    'pass'      => '',
+    'port'      => 587,
+    'from_name' => 'AptekaWebSite',
+];
 
 try {
     $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8mb4", $user, $pass);
