@@ -4,6 +4,30 @@ header('Content-Type: application/json; charset=utf-8');
 
 $userMessage = trim($_POST['message'] ?? '');
 if (!$userMessage) { echo json_encode(['error' => 'empty']); exit; }
+// Ограничение частоты: не чаще 1 запроса в 5 секунд и не больше 30 в час
+$now = time();
+$_SESSION['ai_log'] = array_values(array_filter(
+    $_SESSION['ai_log'] ?? [],
+    fn($t) => $t > $now - 3600
+));
+
+if (($_SESSION['ai_last'] ?? 0) > $now - 5) {
+    http_response_code(429);
+    echo json_encode(['error' => 'too_fast'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if (count($_SESSION['ai_log']) >= 30) {
+    http_response_code(429);
+    echo json_encode(['error' => 'limit_reached'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+$_SESSION['ai_last']  = $now;
+$_SESSION['ai_log'][] = $now;
+
+// Ограничение длины вопроса
+$userMessage = mb_substr($userMessage, 0, 500);
 
 $stmt = $pdo->query("
     SELECT id, name, short_description, price,
