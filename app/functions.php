@@ -25,6 +25,14 @@ function requireAdmin() {
     }
 }
 
+// хелпер для картинок + заглушка при пустом поле
+function imgUrl(?string $path): string {
+    $path = trim((string)$path);
+    if ($path === '')                          return BASE_URL . '/uploads/no-photo.jpg';
+    if (preg_match('~^https?://~i', $path))    return $path;   // внешняя ссылка из админки
+    return BASE_URL . '/' . ltrim($path, '/');
+}
+
 function csrfToken() {
     if (empty($_SESSION['csrf'])) {
         $_SESSION['csrf'] = bin2hex(random_bytes(32));
