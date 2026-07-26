@@ -1,30 +1,32 @@
 <?php 
 $pageTitle = "Бренд";
 require "layout/admin_header.php"; 
-?>
 
-<?php
-$id    = (int)($_GET['id'] ?? 0);
-$brand = $id ? $pdo->query("SELECT * FROM brands WHERE id = $id")->fetch() : null;
-if ($id && !$brand) die("Бренд не найден");
+$id = (int)($_GET['id'] ?? 0);
 
-// Удаление логотипа
-if (isset($_GET['remove_logo']) && $id) {
-    $pdo->prepare("UPDATE brands SET logo = NULL WHERE id = ?")->execute([$id]);
-    header("Location: brand_edit.php?id=$id");
-    exit;
-}
-
-// Удаление баннера
-if (isset($_GET['remove_banner']) && $id) {
-    $pdo->prepare("UPDATE brands SET banner = NULL WHERE id = ?")->execute([$id]);
-    header("Location: brand_edit.php?id=$id");
-    exit;
+$brand = null;
+if ($id) {
+    $stmt = $pdo->prepare("SELECT * FROM brands WHERE id = ?");
+    $stmt->execute([$id]);
+    $brand = $stmt->fetch(PDO::FETCH_ASSOC);
+    if (!$brand) die("Бренд не найден");
 }
 
 $success = $error = "";
 
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+// ── Удаление логотипа / баннера (только POST с токеном) ──
+if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["remove"]) && $id) {
+    checkCsrf();
+    $field = $_POST["remove"] === 'banner' ? 'banner' : 'logo';
+    $pdo->prepare("UPDATE brands SET `$field` = NULL WHERE id = ?")->execute([$id]);
+    header("Location: brand_edit.php?id=$id");
+    exit;
+}
+
+// ── Сохранение бренда ──
+if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST["remove"])) {
+    checkCsrf();
+
     $name        = trim($_POST["name"] ?? "");
     $description = trim($_POST["description"] ?? "");
 
@@ -37,13 +39,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $uploadDir = __DIR__ . "/../../uploads/brands/";
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
+        $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+        $okTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+
         // ── Загрузка логотипа ──
         if (!empty($_FILES["logo"]["name"])) {
-            $ext     = strtolower(pathinfo($_FILES["logo"]["name"], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+            $ext      = strtolower(pathinfo($_FILES["logo"]["name"], PATHINFO_EXTENSION));
+            $realType = @exif_imagetype($_FILES["logo"]["tmp_name"]);
 
-            if (!in_array($ext, $allowed)) {
-                $error = "Формат логотипа не разрешён: .$ext";
+            if (!in_array($ext, $allowed) || !in_array($realType, $okTypes, true)) {
+                $error = "Формат логотипа не разрешён";
             } elseif ($_FILES["logo"]["size"] > 10 * 1024 * 1024) {
                 $error = "Логотип больше 10 МБ";
             } else {
@@ -58,11 +63,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         // ── Загрузка баннера ──
         if (!$error && !empty($_FILES["banner"]["name"])) {
-            $ext     = strtolower(pathinfo($_FILES["banner"]["name"], PATHINFO_EXTENSION));
-            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $ext      = strtolower(pathinfo($_FILES["banner"]["name"], PATHINFO_EXTENSION));
+            $realType = @exif_imagetype($_FILES["banner"]["tmp_name"]);
 
-            if (!in_array($ext, $allowed)) {
-                $error = "Формат баннера не разрешён: .$ext";
+            if (!in_array($ext, $allowed) || !in_array($realType, $okTypes, true)) {
+                $error = "Формат баннера не разрешён";
             } elseif ($_FILES["banner"]["size"] > 10 * 1024 * 1024) {
                 $error = "Баннер больше 10 МБ";
             } else {
@@ -81,14 +86,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $pdo->prepare("UPDATE brands SET name = ?, description = ?, logo = ?, banner = ? WHERE id = ?")
                     ->execute([$name, $description, $logo, $banner, $id]);
                 $success = "Бренд обновлён!";
+
+                // Перечитываем обновлённые данные
+                $stmt = $pdo->prepare("SELECT * FROM brands WHERE id = ?");
+                $stmt->execute([$id]);
+                $brand = $stmt->fetch(PDO::FETCH_ASSOC);
             } else {
                 $pdo->prepare("INSERT INTO brands (name, description, logo, banner) VALUES (?, ?, ?, ?)")
                     ->execute([$name, $description, $logo, $banner]);
                 header("Location: brand_edit.php?id=" . $pdo->lastInsertId());
                 exit;
             }
-            // Перечитываем обновлённые данные
-            $brand = $pdo->query("SELECT * FROM brands WHERE id = $id")->fetch();
         }
     }
 }
@@ -105,13 +113,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <div class="card-body p-5">
         <?php if ($success): ?>
-            <div class="alert alert-success rounded-4 mb-4"><?= $success ?></div>
+            <div class="alert alert-success rounded-4 mb-4"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div class="alert alert-danger rounded-4 mb-4"><?= $error ?></div>
+            <div class="alert alert-danger rounded-4 mb-4"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data">
+            <?= csrfField() ?>
             <div class="row g-4">
 
                 <!-- Название -->
@@ -131,7 +140,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 <div class="col-lg-6">
                     <label class="form-label fw-bold">Логотип бренда</label>
                     <input type="file" name="logo" class="form-control" accept="image/*">
-                    <small class="text-muted">JPG, PNG, GIF, WebP, SVG — до 10 МБ</small>
+                    <small class="text-muted">JPG, PNG, GIF, WebP — до 10 МБ</small>
                 </div>
 
                 <!-- Баннер: загрузка -->
@@ -151,10 +160,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <div class="mt-2">
                         <img src="<?= htmlspecialchars($brand['logo']) ?>"
                              class="img-fluid rounded-4 shadow-sm" style="max-height:220px;">
-                        <div class="mt-2">
-                            <a href="?id=<?= $id ?>&remove_logo=1" class="text-danger small"
-                               onclick="return confirm('Удалить логотип?')">удалить логотип</a>
-                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -167,10 +172,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         <img src="<?= htmlspecialchars($brand['banner']) ?>"
                              class="img-fluid rounded-4 shadow-sm"
                              style="max-height:120px;width:100%;object-fit:cover;">
-                        <div class="mt-2">
-                            <a href="?id=<?= $id ?>&remove_banner=1" class="text-danger small"
-                               onclick="return confirm('Удалить баннер?')">удалить баннер</a>
-                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -184,6 +185,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             </div>
         </form>
+
+        <!-- Удаление логотипа / баннера — отдельными формами, чтобы не вкладывать формы друг в друга -->
+        <?php if ($id && (!empty($brand['logo']) || !empty($brand['banner']))): ?>
+        <div class="mt-4 pt-4 border-top d-flex gap-3">
+            <?php if (!empty($brand['logo'])): ?>
+            <form method="post" onsubmit="return confirm('Удалить логотип?')">
+                <?= csrfField() ?>
+                <input type="hidden" name="remove" value="logo">
+                <button type="submit" class="btn btn-link text-danger small p-0">удалить логотип</button>
+            </form>
+            <?php endif; ?>
+
+            <?php if (!empty($brand['banner'])): ?>
+            <form method="post" onsubmit="return confirm('Удалить баннер?')">
+                <?= csrfField() ?>
+                <input type="hidden" name="remove" value="banner">
+                <button type="submit" class="btn btn-link text-danger small p-0">удалить баннер</button>
+            </form>
+            <?php endif; ?>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
