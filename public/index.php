@@ -859,12 +859,6 @@ async function sendAiMessage(msg){
     finally{document.getElementById('aiModalInput').disabled=false;document.getElementById('aiModalInput').focus()}
 }
 
-document.getElementById('filterForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const params = new URLSearchParams(new FormData(this));
-    window.location.href = 'index.php?' + params.toString() + '#catalog';
-});
-
 </script>
 
 <?php require "layout/footer.php"; ?>
