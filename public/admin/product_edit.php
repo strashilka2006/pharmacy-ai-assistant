@@ -5,16 +5,20 @@ require "layout/admin_header.php";
 $id = (int)($_GET["id"] ?? 0);
 if (!$id) die("ID товара не указан");
 
-$product = $pdo->query("SELECT * FROM products WHERE id = $id")->fetch(PDO::FETCH_ASSOC);
+$stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+$stmt->execute([$id]);
+$product = $stmt->fetch(PDO::FETCH_ASSOC);
 if (!$product) die("Товар не найден");
 
 $labels = getProductLabels();
-$success = "";
+$success = $error = "";
 
 // Все бренды из таблицы brands
 $brands = $pdo->query("SELECT id, name FROM brands ORDER BY name")->fetchAll(PDO::FETCH_ASSOC);
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    checkCsrf();
+
     $name              = trim($_POST["name"] ?? "");
     $price             = (float)str_replace([' ', ','], ['', '.'], $_POST["price"] ?? "0");
     $short_description = trim($_POST["short_description"] ?? "");
@@ -23,51 +27,70 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $supplier          = trim($_POST["supplier"] ?? "");
     $prescription      = isset($_POST["rx"]) ? 1 : 0;
     $usage_info        = trim($_POST["usage_info"] ?? "");
-    $stock             = (int)($_POST["stock"] ?? 0);
+    $stock             = max(0, (int)($_POST["stock"] ?? 0));
     $label             = $_POST["label"] ?? "";
     $brand_id          = !empty($_POST["brand_id"]) ? (int)$_POST["brand_id"] : null;
 
-    $all_fields = [
-        'indications'       => trim($_POST["indications"] ?? ""),
-        'composition'       => trim($_POST["composition"] ?? ""),
-        'contraindications' => trim($_POST["contraindications"] ?? ""),
-        'drug_interactions' => trim($_POST["drug_interactions"] ?? ""),
-        'overdose'          => trim($_POST["overdose"] ?? "")
-    ];
+    $indications       = trim($_POST["indications"] ?? "");
+    $composition       = trim($_POST["composition"] ?? "");
+    $contraindications = trim($_POST["contraindications"] ?? "");
+    $drug_interactions = trim($_POST["drug_interactions"] ?? "");
+    $overdose          = trim($_POST["overdose"] ?? "");
 
-    // Фото
+    // Фото: если ничего не прислали — оставляем старое
     $image = $product["image"];
+
     if (!empty($_POST["photo_url"])) {
         $image = trim($_POST["photo_url"]);
     } elseif (!empty($_FILES["photo"]["name"]) && $_FILES["photo"]["error"] === UPLOAD_ERR_OK) {
-        $dir = $_SERVER['DOCUMENT_ROOT'] . "/AptekaWebSite/uploads/";
+        $dir = __DIR__ . "/../../uploads/";
         if (!is_dir($dir)) mkdir($dir, 0777, true);
-        $fileName = time() . "_" . basename($_FILES["photo"]["name"]);
-        if (move_uploaded_file($_FILES["photo"]["tmp_name"], $dir . $fileName)) {
-            $image = "/AptekaWebSite/uploads/" . $fileName;
+
+        $ext = strtolower(pathinfo($_FILES["photo"]["name"], PATHINFO_EXTENSION));
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+
+        // проверяем реальный тип файла, а не то, что написано в имени
+        $realType = @exif_imagetype($_FILES["photo"]["tmp_name"]);
+        $okTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+
+        if (!in_array($ext, $allowed) || !in_array($realType, $okTypes, true)) {
+            $error = "Недопустимый формат изображения!";
+        } else {
+            $fileName = time() . "_" . uniqid() . "." . $ext;
+            if (move_uploaded_file($_FILES["photo"]["tmp_name"], $dir . $fileName)) {
+                $image = "/apteka/uploads/" . $fileName;
+            } else {
+                $error = "Ошибка загрузки файла.";
+            }
         }
     }
 
-    // Обновление
-    $sql = "UPDATE products SET 
-            name=?, price=?, short_description=?, description=?, long_description=?,
-            supplier=?, prescription=?, usage_info=?, stock=?, image=?, label=?, brand_id=?
-            WHERE id=?";
-
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([
-        $name, $price, $short_description, $description, $long_description,
-        $supplier, $prescription, $usage_info, $stock, $image, $label, $brand_id, $id
-    ]);
-
-    foreach ($all_fields as $field => $value) {
-        if ($pdo->query("SHOW COLUMNS FROM products LIKE '$field'")->rowCount() > 0) {
-            $pdo->prepare("UPDATE products SET `$field` = ? WHERE id = ?")->execute([$value, $id]);
-        }
+    if (empty($name) || $price <= 0) {
+        $error = "Заполните название и цену!";
     }
 
-    $product = $pdo->query("SELECT * FROM products WHERE id = $id")->fetch(PDO::FETCH_ASSOC);
-    $success = "Изменения сохранены!";
+    if (!$error) {
+        $sql = "UPDATE products SET 
+                name = ?, price = ?, short_description = ?, description = ?, long_description = ?,
+                supplier = ?, prescription = ?, usage_info = ?, stock = ?, image = ?, label = ?, brand_id = ?,
+                indications = ?, composition = ?, contraindications = ?, drug_interactions = ?, overdose = ?
+                WHERE id = ?";
+
+        $stmt = $pdo->prepare($sql);
+        $stmt->execute([
+            $name, $price, $short_description, $description, $long_description,
+            $supplier, $prescription, $usage_info, $stock, $image, $label, $brand_id,
+            $indications, $composition, $contraindications, $drug_interactions, $overdose,
+            $id
+        ]);
+
+        // перечитываем товар, чтобы форма показала сохранённые значения
+        $stmt = $pdo->prepare("SELECT * FROM products WHERE id = ?");
+        $stmt->execute([$id]);
+        $product = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        $success = "Изменения сохранены!";
+    }
 }
 ?>
 
@@ -87,10 +110,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     <div class="card-body p-5">
         <?php if ($success): ?>
-            <div class="alert alert-success rounded-4 mb-4">Изменения сохранены!</div>
+            <div class="alert alert-success rounded-4 mb-4"><?= htmlspecialchars($success) ?></div>
+        <?php endif; ?>
+        <?php if ($error): ?>
+            <div class="alert alert-danger rounded-4 mb-4"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data">
+            <?= csrfField() ?>
             <div class="row g-4">
                 <!-- Название + Цена -->
                 <div class="col-lg-8">
@@ -99,10 +126,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 </div>
                 <div class="col-lg-4">
                     <label class="form-label fw-bold">Цена (₽)</label>
-                    <input type="text" name="price" class="form-control form-control-lg" value="<?= number_format($product["price"], 0, '', ' ') ?>" required>
+                    <input type="text" name="price" class="form-control form-control-lg" value="<?= number_format($product["price"], 2, '.', '') ?>" required>
                 </div>
 
-                <!-- Бренд (уже нормальный, из таблицы brands) -->
+                <!-- Бренд -->
                 <div class="col-md-6">
                     <label class="form-label fw-bold">Бренд</label>
                     <select name="brand_id" class="form-select">
@@ -138,9 +165,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
                 <hr class="my-5">
 
-                <!-- Остальные поля — без изменений -->
                 <div class="col-md-4"><label class="form-label fw-bold">Поставщик</label><input type="text" name="supplier" class="form-control" value="<?= htmlspecialchars($product["supplier"] ?? '') ?>"></div>
-                <div class="col-md-4"><label class="form-label fw-bold">На складе</label><input type="number" name="stock" class="form-control" value="<?= $product["stock"] ?>"></div>
+                <div class="col-md-4"><label class="form-label fw-bold">На складе</label><input type="number" name="stock" class="form-control" value="<?= (int)$product["stock"] ?>" min="0"></div>
                 <div class="col-md-4"><label class="form-label fw-bold">Метка</label>
                     <select name="label" class="form-select">
                         <option value="">—</option>
