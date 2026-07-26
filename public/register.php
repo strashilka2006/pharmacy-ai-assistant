@@ -20,6 +20,25 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
         exit;
     }
 
+    // Ограничение частоты: не чаще раза в минуту, не больше 5 за час
+    $now = time();
+    $_SESSION['code_log'] = array_values(array_filter(
+        $_SESSION['code_log'] ?? [],
+        fn($t) => $t > $now - 3600
+    ));
+
+    if (($_SESSION['code_last'] ?? 0) > $now - 60) {
+        echo json_encode(["ok" => false, "error" => "Подождите минуту перед повторной отправкой"]);
+        exit;
+    }
+    if (count($_SESSION['code_log']) >= 5) {
+        echo json_encode(["ok" => false, "error" => "Слишком много запросов. Попробуйте позже"]);
+        exit;
+    }
+
+    $_SESSION['code_last']  = $now;
+    $_SESSION['code_log'][] = $now;
+    
     // Генерируем код
     $code = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
@@ -43,13 +62,18 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST["action"]) && $_POST["
     header('Content-Type: application/json');
     $email = trim($_POST["email"] ?? "");
     $code  = trim($_POST["code"] ?? "");
-
+    $_SESSION['verify_attempts'] = ($_SESSION['verify_attempts'] ?? 0) + 1;
+    if ($_SESSION['verify_attempts'] > 10) {
+        echo json_encode(["ok" => false, "error" => "Слишком много попыток. Запросите новый код"]);
+        exit;
+    }
     $stmt = $pdo->prepare("SELECT id FROM email_verifications 
                            WHERE email = ? AND code = ? AND verified = 0 
                            AND created_at > DATE_SUB(NOW(), INTERVAL 10 MINUTE)");
     $stmt->execute([$email, $code]);
 
     if ($stmt->rowCount() > 0) {
+        $_SESSION['verify_attempts'] = 0;
         $pdo->prepare("UPDATE email_verifications SET verified = 1 WHERE email = ?")->execute([$email]);
         echo json_encode(["ok" => true]);
     } else {
