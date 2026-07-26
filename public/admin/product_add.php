@@ -6,6 +6,7 @@ $labels = getProductLabels();
 $success = $error = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    checkCsrf();
     $name              = trim($_POST["name"] ?? "");
     $price             = (float)str_replace([' ', ','], ['', '.'], $_POST["price"] ?? "0");
     $short_description = trim($_POST["short_description"] ?? "");
@@ -39,7 +40,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
             $ext = strtolower(pathinfo($_FILES["photo"]["name"], PATHINFO_EXTENSION));
             $allowed = ['jpg','jpeg','png','gif','webp'];
-            if (!in_array($ext, $allowed)) {
+
+            $realType = @exif_imagetype($_FILES["photo"]["tmp_name"]);
+            $okTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP];
+
+            if (!in_array($ext, $allowed) || !in_array($realType, $okTypes, true)) {
                 $error = "Недопустимый формат изображения!";
             } else {
                 $fileName = time() . "_" . uniqid() . "." . $ext;
@@ -95,6 +100,7 @@ $brands = $pdo->query("SELECT id, name FROM brands ORDER BY name")->fetchAll(PDO
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data">
+            <?= csrfField() ?>
             <div class="row g-4">
                 <!-- Название + Цена -->
                 <div class="col-lg-8">
