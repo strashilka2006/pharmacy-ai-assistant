@@ -48,9 +48,12 @@ $stmt->execute([$user_id]);
 $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['avatar']) && $_FILES['avatar']['error'] === 0) {
+    checkCsrf();
     $file = $_FILES['avatar'];
     $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp'])) {
+    $realType = @exif_imagetype($file['tmp_name']);
+    $okTypes = [IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_WEBP];
+    if (in_array($ext, ['jpg', 'jpeg', 'png', 'webp']) && in_array($realType, $okTypes, true)) {
         $filename = time() . "_" . bin2hex(random_bytes(8)) . ".$ext";
         $path = __DIR__ . "/uploads/" . $filename;
         if (move_uploaded_file($file['tmp_name'], $path)) {
@@ -84,6 +87,7 @@ $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Обработка сохранения профиля
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
+    checkCsrf();
     $name    = trim($_POST['name'] ?? '');
     $phone   = trim($_POST['phone'] ?? '');
     $address = trim($_POST['address'] ?? '');
@@ -96,11 +100,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_profile'])) {
     $user['phone']   = $phone;
     $user['address'] = $address;
 
-    header("Location: " . $_SERVER['PHP_SELF']);
+    header("Location: personal.php");
     exit;
 }
 
-
+ 
 $pageTitle = "Профиль";
 require "layout/header.php";
 ?>
@@ -485,6 +489,7 @@ require "layout/header.php";
             <img src="/apteka/public/uploads/<?= htmlspecialchars($user['avatar'] ?? 'default.png') ?>"
                  class="prof-avatar-img" alt="Аватар">
             <form method="post" enctype="multipart/form-data" class="prof-avatar-form">
+                <?= csrfField() ?>
                 <input type="file" name="avatar" accept="image/*" class="reg-file-input">
                 <button type="submit" class="reg-btn outline">Сохранить фото</button>
             </form>
@@ -502,6 +507,7 @@ require "layout/header.php";
 
         <?php if (isset($_GET['edit'])): ?>
             <form method="POST">
+                <?= csrfField() ?>
                 <div class="reg-field">
                     <label>ФИО</label>
                     <input type="text" name="name" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required placeholder="Иванов Иван Иванович">
@@ -569,7 +575,7 @@ require "layout/header.php";
                 <hr class="reg-divider">
                 <div style="display:flex;gap:10px;">
                     <button type="submit" name="save_profile" class="reg-btn" style="flex:1;">Сохранить изменения →</button>
-                    <a href="<?= $_SERVER['PHP_SELF'] ?>" class="reg-btn outline">Отмена</a>
+                    <a href="personal.php" class="reg-btn outline">Отмена</a>
                 </div>
             </form>
 
