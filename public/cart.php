@@ -1,8 +1,4 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
 require "../app/bootstrap.php";
 
 if (!isLogged()) {
@@ -36,6 +32,7 @@ foreach ($items as $item) {
 
 // Обработка оформления заказа
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
+    checkCsrf();
     if (empty($items)) {
         $error = "Корзина пуста";
     } else {
@@ -158,7 +155,7 @@ require "layout/header.php";
                                 <?php $sum = $item['price'] * $item['qty']; ?>
                                 <tr>
                                     <td>
-                                        <img src="<?= htmlspecialchars($item['image'] ?: 'https://via.placeholder.com/100') ?>"
+                                        <img src="<?= htmlspecialchars($item['image'] ?: 'https://placehold.co/100') ?>"
                                              class="rounded shadow-sm" width="90" height="90" style="object-fit: contain;">
                                     </td>
                                     <td class="fw-600"><?= htmlspecialchars($item['name']) ?></td>
@@ -174,9 +171,12 @@ require "layout/header.php";
                                     <td class="text-end fw-600"><?= number_format($item['price'], 0, '', ' ') ?> ₽</td>
                                     <td class="text-end fw-bold fs-5"><?= number_format($sum, 0, '', ' ') ?> ₽</td>
                                     <td>
-                                        <a href="remove_from_cart.php?id=<?= $item['cart_id'] ?>"
-                                           class="btn btn-outline-danger btn-sm"
-                                           onclick="return confirm('Удалить товар?')">Удалить</a>
+                                       <form method="post" action="remove_from_cart.php" class="d-inline"
+                                              onsubmit="return confirm('Удалить товар?')">
+                                            <?= csrfField() ?>
+                                            <input type="hidden" name="id" value="<?= $item['cart_id'] ?>">
+                                            <button type="submit" class="btn btn-outline-danger btn-sm">Удалить</button>
+                                        </form>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
@@ -194,6 +194,7 @@ require "layout/header.php";
                 <h3 class="mb-4">Данные для доставки</h3>
                 <div class="card p-4">
                     <form method="POST">
+                        <?= csrfField() ?>
                         <div class="mb-3">
                             <label class="form-label fw-600">ФИО *</label>
                             <input type="text" name="name" class="form-control" value="<?= htmlspecialchars($user['name'] ?? '') ?>" required>
