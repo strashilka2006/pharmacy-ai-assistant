@@ -7,7 +7,8 @@ $brand    = $_GET['brand'] ?? '';
 $priceMin = $_GET['price_min'] ?? '';
 $priceMax = $_GET['price_max'] ?? '';
 
-$sql = "SELECT p.*, b.name AS brand_name FROM products p LEFT JOIN brands b ON p.brand_id = b.id WHERE 1=1";
+$sql = "SELECT p.id, p.name, p.price, p.image, b.name AS brand_name
+        FROM products p LEFT JOIN brands b ON p.brand_id = b.id WHERE 1=1";
 $params = [];
 
 if ($search !== '') { $sql .= " AND p.name LIKE ?"; $params[] = "%$search%"; }
