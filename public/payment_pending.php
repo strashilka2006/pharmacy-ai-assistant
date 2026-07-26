@@ -1,6 +1,6 @@
 <?php
 require "../app/bootstrap.php";
-if (!isLogged()) { header("Location: /apteka/public/login.php"); exit; }
+if (!isLogged()) { header("Location: " . BASE_URL . "/public/login.php"); exit; }
 
 $order_id = (int)($_GET['order_id'] ?? 0);
 $pay_url  = htmlspecialchars(urldecode($_GET['pay_url'] ?? ''));

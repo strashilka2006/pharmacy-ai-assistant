@@ -17,5 +17,5 @@ session_destroy();
 unset($_SESSION['user_id'], $_SESSION['email'], $_SESSION['role']);
 
 // Редирект на логин
-header("Location: /apteka/public/login.php");
+header("Location: " . BASE_URL . "/public/login.php");
 exit;

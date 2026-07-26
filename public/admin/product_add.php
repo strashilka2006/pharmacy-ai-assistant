@@ -49,7 +49,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             } else {
                 $fileName = time() . "_" . uniqid() . "." . $ext;
                 if (move_uploaded_file($_FILES["photo"]["tmp_name"], $dir . $fileName)) {
-                    $image = "/apteka/uploads/" . $fileName;
+                    $image = "/uploads/" . $fileName;
                 } else {
                     $error = "Ошибка загрузки файла.";
                 }

@@ -5,7 +5,7 @@
 
             <!-- Бренд + копирайт -->
             <div class="col-12 col-lg-4">
-                <a href="/apteka/public/index.php"
+                <a href="<?= BASE_URL ?>/public/index.php"
                    style="color:#333;font-size:1.2rem;letter-spacing:2.5px;text-decoration:none;font-weight:600;">
                     АПТЕКА
                 </a>

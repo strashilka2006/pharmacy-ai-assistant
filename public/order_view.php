@@ -2,7 +2,7 @@
 require "../app/bootstrap.php";
 
 if (!isset($_SESSION['user_id'])) {
-    header("Location: /apteka/public/login.php");
+    header("Location: " . BASE_URL . "/public/login.php");
     exit;
 }
 
@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel']) && $order['
 $stmt = $pdo->prepare("
     SELECT 
         oi.qty, oi.price, p.name,
-        COALESCE(p.image, p.photo, '/apteka/public/uploads/no-photo.jpg') as image
+        COALESCE(p.image, p.photo) as image
     FROM order_items oi
     LEFT JOIN products p ON oi.product_id = p.id
     WHERE oi.order_id = ?

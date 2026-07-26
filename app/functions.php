@@ -13,7 +13,7 @@ function isAdmin() {
 
 function requireLogin() {
     if (!isLogged()) {
-        header("Location: /apteka/public/login.php");
+        header("Location: " . BASE_URL . "/public/login.php");
         exit;
     }
 }

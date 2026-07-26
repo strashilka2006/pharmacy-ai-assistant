@@ -14,30 +14,30 @@ requireAdmin();
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/apteka/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/style.css?v=<?= time() ?>">
 </head>
 <body>
 
 <!-- ─── Основной navbar (копия из header.php) ─── -->
 <nav class="navbar navbar-expand-lg fixed-top" style="background:#f8fef3;border-bottom:1px solid #e0ebc6;padding:0.3rem 0;z-index:1031;">
     <div class="container">
-        <a class="navbar-brand nav-link" href="/apteka/public/index.php"
+        <a class="navbar-brand nav-link" href="<?= BASE_URL ?>/public/index.php"
            style="color:#333;font-size:1.45rem;letter-spacing:2.5px;">
             АПТЕКА
         </a>
         <div class="collapse navbar-collapse">
             <ul class="navbar-nav ms-auto align-items-center" style="gap:2.25rem;">
                 <li class="nav-item">
-                    <a class="nav-link" href="/apteka/public/personal.php" style="color:#333;font-size:.9rem;padding:.4rem 1rem;">ПРОФИЛЬ</a>
+                    <a class="nav-link" href="<?= BASE_URL ?>/public/personal.php" style="color:#333;font-size:.9rem;padding:.4rem 1rem;">ПРОФИЛЬ</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="/apteka/public/cart.php" style="color:#333;font-size:.9rem;padding:.4rem 1rem;">КОРЗИНА</a>
+                    <a class="nav-link" href="<?= BASE_URL ?>/public/cart.php" style="color:#333;font-size:.9rem;padding:.4rem 1rem;">КОРЗИНА</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link fw-600" href="/apteka/public/admin/products.php" style="color:#a6d175;font-size:.9rem;padding:.4rem 1rem;">АДМИНКА</a>
+                    <a class="nav-link fw-600" href="<?= BASE_URL ?>/public/admin/products.php" style="color:#a6d175;font-size:.9rem;padding:.4rem 1rem;">АДМИНКА</a>
                 </li>
                 <li class="nav-item ms-2">
-                    <a href="/apteka/public/logout.php" style="background:#eef6e0;border:1.5px solid #c5dfa0;color:#3a6b1f;border-radius:20px;padding:.3rem 1.1rem;font-size:.82rem;text-decoration:none;font-weight:500;">ВЫЙТИ</a>
+                    <a href="<?= BASE_URL ?>/public/logout.php" style="background:#eef6e0;border:1.5px solid #c5dfa0;color:#3a6b1f;border-radius:20px;padding:.3rem 1.1rem;font-size:.82rem;text-decoration:none;font-weight:500;">ВЫЙТИ</a>
                 </li>
             </ul>
         </div>

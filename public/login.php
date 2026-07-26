@@ -18,10 +18,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["role"]    = $user["role"];
 
         if ($user["role"] === "admin") {
-            header("Location: /apteka/public/admin/index.php");
+            header("Location: " . BASE_URL . "/public/admin/index.php");
             exit;
         }
-        header("Location: /apteka/public/index.php");
+        header("Location: " . BASE_URL . "/public/index.php");
         exit;
     } else {
         $error = "Неверный email или пароль";

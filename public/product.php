@@ -121,7 +121,7 @@ require "layout/header.php";
         <div class="row g-5 align-items-start">
             <!-- Фото -->
             <div class="col-lg-6">
-                <img src="<?= htmlspecialchars($product["image"] ?: '/apteka/uploads/no-photo.jpg') ?>"
+                <img src="<?= htmlspecialchars(imgUrl($product["image"])) ?>"
                     class="img-fluid product-image w-100 rounded-4 shadow"
                     alt="<?= htmlspecialchars($product["name"]) ?>">
             </div>
@@ -271,7 +271,7 @@ require "layout/header.php";
             <div class="col-6 col-md-4 col-lg-3">
                 <a href="product.php?id=<?= $s['id'] ?>" class="text-decoration-none">
                     <div class="card h-100">
-                        <img src="<?= htmlspecialchars($s["image"] ?: '/apteka/uploads/no-photo.jpg') ?>"
+                        <img src="<?= htmlspecialchars(imgUrl($s["image"])) ?>"
                              class="card-img-top"
                              style="height:220px; object-fit:contain; background:#fafafa; padding:1.5rem;">
                         <div class="card-body d-flex flex-column">
@@ -296,7 +296,7 @@ require "layout/header.php";
             <div class="col-6 col-md-4 col-lg-3">
                 <a href="product.php?id=<?= $s['id'] ?>" class="text-decoration-none">
                     <div class="card h-100">
-                        <img src="<?= htmlspecialchars($s["image"] ?: '/apteka/uploads/no-photo.jpg') ?>"
+                        <img src="<?= htmlspecialchars(imgUrl($s["image"])) ?>"
                              class="card-img-top"
                              style="height:220px; object-fit:contain; background:#fafafa; padding:1.5rem;">
                         <div class="card-body d-flex flex-column">

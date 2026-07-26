@@ -54,7 +54,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST["remove"])) {
             } else {
                 $fileName = time() . "_" . uniqid() . "." . $ext;
                 if (move_uploaded_file($_FILES["logo"]["tmp_name"], $uploadDir . $fileName)) {
-                    $logo = "/apteka/uploads/brands/" . $fileName;
+                    $logo = "/uploads/brands/" . $fileName;
                 } else {
                     $error = "Не удалось сохранить логотип";
                 }
@@ -73,7 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST["remove"])) {
             } else {
                 $fileName = 'banner_' . time() . "_" . uniqid() . "." . $ext;
                 if (move_uploaded_file($_FILES["banner"]["tmp_name"], $uploadDir . $fileName)) {
-                    $banner = "/apteka/uploads/brands/" . $fileName;
+                    $banner = "/uploads/brands/" . $fileName;
                 } else {
                     $error = "Не удалось сохранить баннер";
                 }
