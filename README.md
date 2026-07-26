@@ -41,36 +41,44 @@ PROMPT;
 ## Разработка и демонстрация системы
 <img width="974" height="498" alt="image" src="https://github.com/user-attachments/assets/dfdea759-ab3b-4eb5-b368-a1c3c79969e2" /> Главный экран с представленным каталогом и ии-помощником. 
 
-Каталог товаров поддерживает асинхронную подгрузку содержимого без перезагрузки страницы. Запрос к серверу выполняется средствами технологии AJAX, обработчик catalog_ajax.php формирует HTML-разметку списка товаров и возвращает её клиенту. Просмотреть его можно в листинге ниже:
+Каталог товаров поддерживает асинхронную подгрузку содержимого без перезагрузки страницы. Обработчик catalog_ajax.php собирает запрос с фильтрами по бренду, цене и поиску, возвращает результат в JSON, а отрисовкой карточек занимается JavaScript. Просмотреть его можно в листинге ниже:
 
 <details>
 <summary>Листинг</summary>
 
 ```php
 <?php
-require_once '../app/bootstrap.php';
- 
-// получение списка товаров из базы данных
-$brand = isset($_GET['brand']) ? (int)$_GET['brand'] : 0;
- 
-if ($brand > 0) {
-    $stmt = $pdo->prepare(
-        'SELECT * FROM products WHERE brand_id = ? ORDER BY name'
-    );
-    $stmt->execute([$brand]);
-} else {
-    $stmt = $pdo->query('SELECT * FROM products ORDER BY name');
+require "../app/bootstrap.php";
+
+$search   = trim($_GET['q'] ?? '');
+$sort     = $_GET['sort'] ?? 'new';
+$brand    = $_GET['brand'] ?? '';
+$priceMin = $_GET['price_min'] ?? '';
+$priceMax = $_GET['price_max'] ?? '';
+
+$sql = "SELECT p.id, p.name, p.price, p.image, b.name AS brand_name
+        FROM products p LEFT JOIN brands b ON p.brand_id = b.id WHERE 1=1";
+$params = [];
+
+if ($search !== '') { $sql .= " AND p.name LIKE ?"; $params[] = "%$search%"; }
+if ($brand  !== '') { $sql .= " AND p.brand_id = ?"; $params[] = (int)$brand; }
+if ($priceMin !== '') { $sql .= " AND p.price >= ?"; $params[] = (int)$priceMin; }
+if ($priceMax !== '') { $sql .= " AND p.price <= ?"; $params[] = (int)$priceMax; }
+
+switch ($sort) {
+    case 'price_asc':  $sql .= " ORDER BY p.price ASC"; break;
+    case 'price_desc': $sql .= " ORDER BY p.price DESC"; break;
+    case 'name_asc':   $sql .= " ORDER BY p.name ASC"; break;
+    case 'brand_asc':  $sql .= " ORDER BY brand_name ASC, p.name ASC"; break;
+    default:           $sql .= " ORDER BY p.id DESC"; break;
 }
+
+$stmt = $pdo->prepare($sql);
+$stmt->execute($params);
 $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
- 
-// формирование разметки карточек товаров
-foreach ($products as $p) {
-    echo '<div class="product-card">';
-    echo '<img src="uploads/' . htmlspecialchars($p['image']) . '">';
-    echo '<h3>' . htmlspecialchars($p['name']) . '</h3>';
-    echo '<span>' . number_format($p['price'], 2) . ' руб.</span>';
-    echo '</div>';
-}
+
+header('Content-Type: application/json');
+echo json_encode($products);
 ```
 В листинге показано, что обработчик получает идентификатор бренда из параметров запроса, выбирает из базы данных соответствующие товары и формирует HTML-разметку карточек. Применение подготовленных запросов и функции htmlspecialchars обеспечивает защиту от внедрения вредоносного кода.
 </details>
@@ -84,7 +92,7 @@ foreach ($products as $p) {
 
 Отдельная страница есть у каждого бренда — логотип, описание, свои товары, рекламный баннер на главной. Всё это правится из админки, доступ к которой открыт только роли «Администратор».
 
-Статус заказа хранится в базе строкой: `new`, `paid`, `cancelled`.
+Статус заказа хранится строкой и меняется по мере доставки: `new` → `processing` → `shipped` → `at_hub` → `sent_to_pickup` → `ready_for_pickup`, либо `cancelled`. На странице заказа статус показан трекером с прогресс-баром.
 
 ## Запуск
 Нужны PHP 8, MySQL и [Ollama](https://ollama.com).
@@ -115,7 +123,7 @@ ollama serve
 
 Модель ограничена каталогом, но не проверяет уместность рекомендации — например, не отличает рецептурный препарат от безрецептурного при выдаче. Поле prescription в базе для этого есть, фильтр по нему поверх ответа модели — следующий логичный шаг.
 
-Вход через Google и VK не реализован — на форме входа есть кнопки, обработчиков колбэков нет.
+Вход через Google и VK не реализован — кнопки убраны с форм, остался только вход по email.
 
 Статус оплаты проверяется при возврате пользователя на сайт. Если он закроет вкладку после оплаты, заказ останется в статусе `new`. Правильно делать через вебхуки ЮKassa.
 
@@ -128,32 +136,13 @@ ollama serve
 ```text
 apteka/
 ├── app/                             инициализация и общая логика
-│   ├── config.example.php           параметры подключения к БД
 │   ├── bootstrap.php                запуск сессии и подключений
-│   └── functions.php                вспомогательные функции
-├── css/                             стили и фоновые изображения
-│   └── style.css
+│   ├── config.example.php           образец конфига (копируется в config.php)
+│   └── functions.php                вспомогательные функции, CSRF, проверка прав
+├── css/
+│   ├── hero.png                     фоновое изображение главной
+│   └── style.css                    стили
 ├── public/                          общедоступная часть (витрина)
-│   ├── index.php                    главная страница и каталог
-│   ├── product.php                  страница товара
-│   ├── brand.php                    страница бренда
-│   ├── cart.php                     корзина
-│   ├── add_to_cart.php              добавление товара в корзину
-│   ├── remove_from_cart.php         удаление товара из корзины
-│   ├── qty_plus.php, qty_minus.php  изменение количества
-│   ├── ajax_qty.php                 пересчёт корзины через AJAX
-│   ├── catalog_ajax.php             AJAX-обработчик каталога
-│   ├── register.php                 регистрация
-│   ├── login.php, logout.php        вход и выход
-│   ├── order.php                    оформление заказа
-│   ├── order_success.php            успешное оформление
-│   ├── order_view.php               просмотр заказа
-│   ├── order_cancel.php             отмена заказа
-│   ├── payment_pending.php          ожидание оплаты
-│   ├── payment_return.php           возврат после оплаты
-│   ├── personal.php                 личный кабинет покупателя
-│   ├── privacy.php                  политика конфиденциальности
-│   ├── chat_api.php                 обработчик AI-консультанта
 │   ├── admin/                       административная панель
 │   │   ├── index.php                сводная страница
 │   │   ├── products.php             список товаров
@@ -162,12 +151,42 @@ apteka/
 │   │   ├── product_delete.php       удаление товара
 │   │   ├── brands.php               список брендов
 │   │   ├── brand_edit.php           редактирование бренда
-│   │   └── layout/                  admin_header.php, admin_footer.php
-│   ├── layout/                      header.php, footer.php
-│   ├── uploads/                     изображения товаров (+ brands/)
-│   └── vendor/                      сторонние библиотеки (PHPMailer)
-├── uploads/                         изображения товаров и брендов
+│   │   └── layout/
+│   │       ├── admin_header.php     шапка админки
+│   │       └── admin_footer.php     подвал админки
+│   ├── layout/
+│   │   ├── header.php               шапка витрины
+│   │   └── footer.php               подвал витрины
+│   ├── uploads/                     изображения
+│   ├── add_to_cart.php              добавление товара в корзину
+│   ├── ajax_qty.php                 пересчёт корзины через AJAX
+│   ├── brand.php                    страница бренда
+│   ├── cart.php                     корзина и оформление заказа
+│   ├── catalog_ajax.php             AJAX-обработчик каталога, отдаёт JSON
+│   ├── chat_api.php                 обработчик AI-консультанта
+│   ├── index.php                    главная страница и каталог
+│   ├── login.php                    вход
+│   ├── logout.php                   выход
+│   ├── order.php                    оформление заказа
+│   ├── order_cancel.php             отмена заказа
+│   ├── order_success.php            успешное оформление
+│   ├── order_view.php               просмотр заказа и трекер доставки
+│   ├── payment_pending.php          ожидание оплаты
+│   ├── payment_return.php           возврат после оплаты
+│   ├── personal.php                 личный кабинет покупателя
+│   ├── privacy.php                  политика конфиденциальности
+│   ├── product.php                  страница товара
+│   ├── qty_minus.php                уменьшение количества
+│   ├── qty_plus.php                 увеличение количества
+│   ├── register.php                 регистрация с подтверждением по коду
+│   └── remove_from_cart.php         удаление товара из корзины
+├── uploads/                         изображения товаров
 │   └── brands/                      логотипы и баннеры брендов
-└── vendor/                          библиотеки, подключаемые из public
+├── .gitignore
+├── LICENSE
+├── README.md
+├── composer.json                    зависимости проекта
+├── composer.lock                    зафиксированные версии (PHPMailer)
+└── schema.sql                       дамп базы данных
 ```
 </details>
