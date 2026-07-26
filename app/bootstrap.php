@@ -9,6 +9,16 @@ if (session_status() === PHP_SESSION_NONE) {
 // Подключаем конфиг (в нём уже есть $pdo)
 require_once __DIR__ . '/config.php';
 
+// Определяем префикс сайта автоматически: /apteka, /shop, '' — как положишь
+if (!defined('BASE_URL')) {
+    $projectRoot = str_replace('\\', '/', dirname(__DIR__));
+    $docRoot     = rtrim(str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT'] ?? ''), '/');
+    $base        = ($docRoot && str_starts_with($projectRoot, $docRoot))
+        ? substr($projectRoot, strlen($docRoot))
+        : '';
+    define('BASE_URL', rtrim($base, '/'));
+}
+
 // Подключаем функции, но с защитой от двойного вызова session_start
 if (!function_exists('isLogged')) {  // если функции ещё не объявлены
     require_once __DIR__ . '/functions.php';
