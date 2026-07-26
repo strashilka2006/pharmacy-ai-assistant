@@ -6,7 +6,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$orderId = $_GET['id'] ?? null;
+$orderId = (int)($_GET['id'] ?? 0);
 $userId  = $_SESSION['user_id'];
 
 if (!$orderId) {
@@ -31,9 +31,6 @@ if (!$order) {
     die("Заказ не найден или доступ запрещён.");
 }
 
-// Вывод инфы для дебага
-echo "<pre>STATUS: {$order['status']}</pre>";
-
 // Мапа шагов
 $statusMap = [
     'new'              => 0,
@@ -48,19 +45,19 @@ $statusMap = [
 
 // Текущий шаг
 $currentStep = $statusMap[$order['status']] ?? 0;
-echo "<pre>CURRENT STEP: $currentStep</pre>";
 
 $progressPercent = ($currentStep >= 0) ? ($currentStep / 5) * 100 : 0;
 
 // Отмена заказа
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel']) && $order['status'] === 'new') {
+    checkCsrf();
     $pdo->prepare("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?")
         ->execute([$orderId]);
 
     $order['status'] = "cancelled";
     $currentStep = -1;
 
-    echo "<script>alert('Заказ отменён'); location.reload();</script>";
+    header("Location: order_view.php?id=" . (int)$orderId);
     exit;
 }
 
@@ -171,7 +168,7 @@ require "layout/header.php";
 
                     <?php foreach ($items as $item): ?>
                         <div class="d-flex gap-4 align-items-center border-bottom pb-4 mb-4">
-                            <img src="<?= $item['image'] ?>" style="width:100px;height:100px;object-fit:cover;" class="rounded">
+                            <img src="<?= htmlspecialchars($item['image']) ?>" style="width:100px;height:100px;object-fit:cover;" class="rounded">
                             <div class="flex-grow-1">
                                 <h6 class="mb-1"><?= htmlspecialchars($item['name']) ?></h6>
                                 <div class="text-muted small">Цена: <?= number_format($item['price'], 0, '', ' ') ?> ₽</div>
@@ -194,6 +191,7 @@ require "layout/header.php";
                     <?php if ($order['status'] === 'new'): ?>
                         <div class="text-center mt-5">
                             <form method="post">
+                                <?= csrfField() ?>
                                 <button name="cancel" class="btn btn-lg btn-outline-dark">Отменить заказ</button>
                             </form>
                         </div>
@@ -202,8 +200,13 @@ require "layout/header.php";
                 </div>
             </div>
 
-            <div class="text-center text-muted mt-4 small">
-                Демо-режим: нажми "Запустить демо" — шаги побегут
+            <div class="text-center mt-4">
+                <button onclick="startDemo()" class="btn btn-sm btn-outline-dark">
+                    Показать анимацию доставки
+                </button>
+                <div class="text-muted small mt-2">
+                    Демонстрация трекера: реальные статусы обновляются по таймеру
+                </div>
             </div>
         </div>
     </div>
@@ -228,9 +231,5 @@ function startDemo() {
     }, 1000);
 }
 </script>
-
-<button onclick="startDemo()" class="btn btn-sm btn-outline-dark mt-3">
-    Запустить демо
-</button>
 
 <?php require "layout/footer.php"; ?>
