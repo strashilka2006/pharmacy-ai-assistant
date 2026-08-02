@@ -140,6 +140,201 @@ ollama serve
 
 Советую там выбрать не бесплатную модель, а дешёвую платную уровня Qwen3. Это из-за того, что очень много людей используют этот сайт и бесплатные модели в том числе, и если будет ответственный момент, когда вы станете показывать ИИ, модель спокойно сможет просто отклонить запрос из-за большой нагрузки на неё. Платные модели даже в пару центов за миллион токенов у меня ни разу не отлетали. Это, кстати, и основная причина, почему я развернул локальную ИИ у себя — так банально надёжнее.
 
+## Структура базы данных apteka
+СУБД: MariaDB 10.4 (MySQL-совместимая) · Движок: InnoDB · Кодировка: utf8mb4_general_ci Таблиц: 14
+
+```mermaid
+erDiagram
+    users        ||--o{ orders        : "оформляет"
+    users        ||--o{ cart          : "наполняет"
+    users        ||--o{ reviews       : "оставляет"
+    users        ||--o{ used_coupons  : "применяет"
+    users        ||--o{ admin_logs    : "выполняет действия"
+    orders       ||--|{ order_items   : "содержит"
+    products     ||--o{ order_items   : "входит в"
+    products     ||--o{ cart          : "добавлен в"
+    products     ||--o{ reviews       : "имеет"
+    brands       ||--o{ products      : "выпускает"
+    categories   ||--o{ products      : "группирует"
+    coupons      ||--o{ used_coupons  : "используется"
+    permissions  ||--o{ role_permissions : "назначается"
+```
+> Связи реализованы **логически, на уровне приложения**: в дампе объявлены только `PRIMARY KEY` и обычные индексы (`KEY`), внешние ключи (`FOREIGN KEY`) отсутствуют.
+
+<details>
+<summary>Развёрнутые таблицы из бд</summary>
+
+### `users` — пользователи и администраторы
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `email` | varchar(255), UNIQUE | Логин пользователя |
+| `password` | varchar(255) | Хеш пароля (bcrypt, `$2y$10$…`) |
+| `name` | varchar(255), NULL | Имя |
+| `phone` | varchar(50), NULL | Телефон |
+| `role` | enum(`user`,`admin`) | Роль, по умолчанию `user` |
+| `created_at` | timestamp | Дата регистрации |
+| `avatar` | varchar(255), NULL | Путь к аватару |
+| `address` | varchar(255), NULL | Адрес по умолчанию |
+
+### `products` — товары (лекарства, БАДы, косметика)
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `category_id` | int, NULL | Ссылка на `categories.id` |
+| `name` | varchar(255) | Название |
+| `short_description` | text, NULL | Краткое описание для карточки в каталоге |
+| `description` | text, NULL | Основное описание |
+| `long_description` | longtext, NULL | Развёрнутое описание для страницы товара |
+| `price` | decimal(10,2) | Цена |
+| `supplier` | varchar(255), NULL | Поставщик |
+| `brand_id` | int, NULL | Ссылка на `brands.id` |
+| `brand` | varchar(100), NULL | Текстовое название бренда (устаревшее поле) |
+| `prescription` | tinyint(1) | Рецептурный отпуск: `0` / `1` |
+| `usage_info` | text, NULL | Способ применения и дозировки |
+| `stock` | int | Остаток на складе |
+| `image` | varchar(255), NULL | URL или путь к изображению |
+| `photo` | varchar(255), NULL | Дополнительное изображение (не используется) |
+| `created_at` | timestamp | Дата добавления |
+| `label` | varchar(50), NULL | Метка-бейдж: `bad` (БАД), `strong` (сильнодействующее) |
+| `indications` | text, NULL | Показания к применению |
+| `composition` | text, NULL | Состав |
+| `contraindications` | text, NULL | Противопоказания |
+| `drug_interactions` | text, NULL | Лекарственное взаимодействие |
+| `overdose` | text, NULL | Передозировка |
+
+### `brands` — бренды-производители
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `name` | varchar(100), UNIQUE | Название бренда |
+| `description` | text, NULL | Описание для страницы бренда |
+| `logo` | varchar(255), NULL | Путь к логотипу |
+| `banner` | varchar(500), NULL | Путь к баннеру |
+| `created_at` | datetime | Дата добавления |
+
+### `categories` — категории товаров
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `name` | varchar(255) | Название категории |
+| `description` | text, NULL | Описание |
+
+### `cart` — корзина
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `user_id` | int | Владелец корзины |
+| `product_id` | int | Товар |
+| `qty` | int | Количество, по умолчанию `1` |
+| `added_at` | timestamp | Время добавления |
+
+Уникальный ключ `uniq_user_product (user_id, product_id)` — один товар в корзине пользователя строго одной строкой.
+
+### `orders` — заказы
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Номер заказа |
+| `user_id` | int | Покупатель |
+| `total` | decimal(10,2) | Итоговая сумма |
+| `status` | enum(`pending_payment`,`new`,`paid`,`cancelled`) | Статус, по умолчанию `pending_payment` |
+| `name` | varchar(255) | Имя получателя |
+| `phone` | varchar(50) | Телефон получателя |
+| `address` | text | Адрес доставки |
+| `created_at` | datetime | Дата создания |
+| `updated_at` | datetime, NULL | Обновляется автоматически |
+| `payment_id` | varchar(64), NULL | Идентификатор платежа в платёжной системе |
+
+### `order_items` — позиции заказа
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `order_id` | int | Ссылка на `orders.id` |
+| `product_id` | int | Ссылка на `products.id` |
+| `qty` | int | Количество |
+| `price` | decimal(10,2) | Цена на момент покупки (фиксируется, не тянется из `products`) |
+
+### `reviews` — отзывы о товарах
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `product_id` | int | Товар |
+| `user_id` | int | Автор |
+| `rating` | int | Оценка |
+| `comment` | text, NULL | Текст отзыва |
+| `created_at` | timestamp | Дата публикации |
+
+### `coupons` — промокоды
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `code` | varchar(50), UNIQUE | Код купона |
+| `discount_percent` | int | Скидка в процентах |
+| `expires_at` | datetime, NULL | Срок действия |
+| `active` | tinyint(1) | Активен, по умолчанию `1` |
+
+### `used_coupons` — история применения купонов
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `user_id` | int | Пользователь |
+| `coupon_id` | int | Купон |
+| `used_at` | timestamp | Время применения |
+
+### `email_verifications` — подтверждение e-mail
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `email` | varchar(255), индекс | Адрес, на который отправлен код |
+| `code` | varchar(6) | Шестизначный код подтверждения |
+| `created_at` | datetime | Время генерации кода |
+| `verified` | tinyint | Флаг подтверждения, по умолчанию `0` |
+
+### `permissions` — права доступа
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `name` | varchar(255), UNIQUE | Кодовое имя права |
+
+Предустановленные значения: `manage_products`, `manage_users`, `view_admin_panel`.
+
+### `role_permissions` — привязка прав к ролям
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `role` | enum(`admin`,`user`) | Роль |
+| `permission_id` | int | Ссылка на `permissions.id` |
+
+По умолчанию все три права выданы роли `admin`. Собственного первичного ключа у таблицы нет.
+
+### `admin_logs` — журнал действий администратора
+
+| Колонка | Тип | Описание |
+|---|---|---|
+| `id` | int, PK, AI | Идентификатор |
+| `admin_id` | int | Кто выполнил действие (`users.id`) |
+| `action` | text | Описание действия |
+| `created_at` | timestamp | Время события |
+</details>
+
+> Импорт
+```bash
+mysql -u root -p -e "CREATE DATABASE apteka CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;"
+mysql -u root -p apteka < apteka.sql
+```
+
 <details>
 <summary>Структура проекта</summary>
   
