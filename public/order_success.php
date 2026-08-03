@@ -1,5 +1,7 @@
-<?php require "layout/header.php"; 
+<?php
+require "../app/bootstrap.php";
 $order_id = $_GET['order_id'] ?? 'неизвестен';
+require "layout/header.php";
 ?>
 <main class="container py-5 text-center">
     <h1 class="mb-4">Спасибо за заказ!</h1>
