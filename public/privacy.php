@@ -1,35 +1,39 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8">
-<title>Политика конфиденциальности — Аптека</title>
-<link href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<?php
+require __DIR__ . "/../app/bootstrap.php";
 
-body {
+$pageTitle = "Политика конфиденциальности";
+require __DIR__ . "/layout/header.php";
+?>
+
+<style>
+/* Все правила заскоуплены под .privacy-page, чтобы не задеть навбар и футер */
+.privacy-page,
+.privacy-page *,
+.privacy-page *::before,
+.privacy-page *::after { box-sizing: border-box; }
+
+.privacy-page {
     font-family: 'Inter', sans-serif;
     font-size: 15px;
     line-height: 1.8;
     color: #2c2c2c;
     background: #f8fef3;
-    min-height: 100vh;
 }
 
-.page-wrap {
+.privacy-page .page-wrap {
     max-width: 760px;
     margin: 0 auto;
     padding: 60px 24px 100px;
 }
 
-/* Шапка */
-.page-header {
+/* Шапка документа */
+.privacy-page .doc-header {
     border-bottom: 1.5px solid #d4edaa;
     padding-bottom: 32px;
     margin-bottom: 56px;
 }
 
-.page-header .label {
+.privacy-page .doc-header .label {
     font-family: 'Fragment Mono', monospace;
     font-size: 11px;
     color: #7AAD3F;
@@ -38,7 +42,7 @@ body {
     margin-bottom: 16px;
 }
 
-.page-header h1 {
+.privacy-page .doc-header h1 {
     font-family: 'Fragment Mono', monospace;
     font-size: clamp(1.6rem, 4vw, 2.4rem);
     font-weight: 400;
@@ -48,17 +52,15 @@ body {
     margin-bottom: 16px;
 }
 
-.page-header .meta {
+.privacy-page .doc-header .meta {
     font-size: 13px;
     color: #888;
 }
 
 /* Секции */
-.section {
-    margin-bottom: 52px;
-}
+.privacy-page .section { margin-bottom: 52px; }
 
-.section-number {
+.privacy-page .section-number {
     font-family: 'Fragment Mono', monospace;
     font-size: 11px;
     color: #b0cfa0;
@@ -66,7 +68,7 @@ body {
     margin-bottom: 8px;
 }
 
-.section h2 {
+.privacy-page .section h2 {
     font-size: 1.05rem;
     font-weight: 600;
     color: #1a3a0a;
@@ -74,26 +76,25 @@ body {
     letter-spacing: -0.2px;
 }
 
-.section p {
+.privacy-page .section p {
     color: #444;
     margin-bottom: 14px;
     font-size: .93rem;
 }
 
-.section p:last-child { margin-bottom: 0; }
+.privacy-page .section p:last-child { margin-bottom: 0; }
 
-/* Инлайн-акценты */
-.accent { color: #5E8F2C; font-weight: 500; }
+.privacy-page .accent { color: #5E8F2C; font-weight: 500; }
 
-/* Разделитель */
-.divider {
+.privacy-page .divider {
     border: none;
     border-top: 1px solid #dff0c0;
     margin: 52px 0;
+    opacity: 1;
 }
 
-/* Подвал */
-.page-footer {
+/* Подвал документа */
+.privacy-page .doc-footer {
     margin-top: 64px;
     padding-top: 28px;
     border-top: 1.5px solid #d4edaa;
@@ -104,7 +105,7 @@ body {
     gap: 12px;
 }
 
-.page-footer a {
+.privacy-page .doc-footer a {
     font-family: 'Fragment Mono', monospace;
     font-size: 12px;
     color: #7AAD3F;
@@ -112,19 +113,18 @@ body {
     letter-spacing: 0.5px;
 }
 
-.page-footer a:hover { text-decoration: underline; }
+.privacy-page .doc-footer a:hover { text-decoration: underline; }
 
-.page-footer .copy {
+.privacy-page .doc-footer .copy {
     font-size: 12px;
     color: #aaa;
 }
 </style>
-</head>
-<body>
 
+<main class="privacy-page">
 <div class="page-wrap">
 
-    <div class="page-header">
+    <div class="doc-header">
         <div class="label">Правовые документы</div>
         <h1>ПОЛИТИКА КОНФИДЕНЦИАЛЬНОСТИ</h1>
         <div class="meta">Последнее обновление: апрель 2026 г. &nbsp;·&nbsp; Версия 1.2</div>
@@ -199,12 +199,12 @@ body {
         <p>По всем вопросам, связанным с обработкой персональных данных, вы можете обратиться через форму обратной связи на сайте или написать напрямую на почту, указанную в разделе «Контакты». Мы стараемся отвечать в течение одного рабочего дня.</p>
     </div>
 
-    <div class="page-footer">
-        <a href="javascript:history.back()">← Вернуться назад</a>
-        <span class="copy">© 2026 Аптека. Все права защищены.</span>
+    <div class="doc-footer">
+        <a href="<?= BASE_URL ?>/public/index.php">← Вернуться в каталог</a>
+        <span class="copy">&copy; <?= date("Y") ?> Аптека. Все права защищены.</span>
     </div>
 
 </div>
+</main>
 
-</body>
-</html>
+<?php require __DIR__ . "/layout/footer.php"; ?>
