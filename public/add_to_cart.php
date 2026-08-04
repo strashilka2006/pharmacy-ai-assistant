@@ -54,5 +54,8 @@ $_SESSION["flash"] = "Товар «{$product["name"]}» добавлен в ко
 
 // Куда редиректим — на товар или сразу в корзину
 $redirect = $_GET["redirect"] ?? "product.php?id=$product_id";
+if (!preg_match('~^[a-z0-9_]+\.php(\?[^\s]*)?$~i', $redirect)) {
+    $redirect = "product.php?id=$product_id";
+}
 header("Location: $redirect");
 exit;
