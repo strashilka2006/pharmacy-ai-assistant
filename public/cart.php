@@ -96,14 +96,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
 
                 if (!empty($response['confirmation']['confirmation_url'])) {
                     // 3. Платёж создан — только теперь чистим корзину
-                    $stmt = $pdo->prepare("UPDATE orders SET payment_id = ? WHERE id = ?");
-                    $stmt->execute([$response['id'], $order_id]);
+                    $stmt = $pdo->prepare("UPDATE orders SET payment_id = ?, pay_url = ? WHERE id = ?");
+                    $stmt->execute([
+                        $response['id'],
+                        $response['confirmation']['confirmation_url'],
+                        $order_id
+                    ]);
 
                     $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ?");
                     $stmt->execute([$user_id]);
 
-                    $confirmUrl = urlencode($response['confirmation']['confirmation_url']);
-                    header("Location: payment_pending.php?order_id=$order_id&pay_url=$confirmUrl");
+                    header("Location: payment_pending.php?order_id=$order_id");
                     exit;
                 }
 
