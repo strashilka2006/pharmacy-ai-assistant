@@ -60,7 +60,9 @@ document.addEventListener('DOMContentLoaded', function() {
             fetch('ajax_qty.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'product_id=' + encodeURIComponent(productId) + '&action=' + encodeURIComponent(action)
+                body: 'product_id=' + encodeURIComponent(productId)
+                    + '&action=' + encodeURIComponent(action)
+                    + '&csrf=' + encodeURIComponent(window.CSRF_TOKEN)
             })
             .then(r => r.json())
             .then(data => {
