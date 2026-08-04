@@ -12,8 +12,17 @@ checkCsrf();
 $id = (int)($_POST["id"] ?? 0);
 
 if ($id > 0) {
-    $stmt = $pdo->prepare("DELETE FROM products WHERE id = ?");
-    $stmt->execute([$id]);
+    try {
+        $pdo->prepare("DELETE FROM products WHERE id = ?")->execute([$id]);
+        $_SESSION['flash'] = "Товар удалён";
+    } catch (PDOException $e) {
+        if ($e->getCode() === '23000') {
+            $pdo->prepare("UPDATE products SET stock = 0 WHERE id = ?")->execute([$id]);
+            $_SESSION['flash'] = "Товар есть в оформленных заказах — удалить нельзя. Остаток обнулён, из продажи снят.";
+        } else {
+            throw $e;
+        }
+    }
 }
 
 header("Location: products.php");
