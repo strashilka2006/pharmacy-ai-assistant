@@ -127,13 +127,14 @@ CREATE TABLE `orders` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `total` decimal(10,2) NOT NULL,
-  `status` enum('pending_payment','new','paid','cancelled') DEFAULT 'pending_payment',
+  `status` enum('pending_payment','new','processing','shipped','at_hub','sent_to_pickup','ready_for_pickup','delivered','paid','cancelled') NOT NULL DEFAULT 'pending_payment',
   `name` varchar(255) NOT NULL,
   `phone` varchar(50) NOT NULL,
   `address` text NOT NULL,
   `created_at` datetime DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp(),
-  `payment_id` varchar(64) DEFAULT NULL
+  `payment_id` varchar(64) DEFAULT NULL,
+  `pay_url` varchar(500) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
@@ -493,3 +494,68 @@ COMMIT;
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+
+-- --------------------------------------------------------
+-- Внешние ключи
+-- --------------------------------------------------------
+
+ALTER TABLE `cart`
+  ADD CONSTRAINT `fk_cart_user`    FOREIGN KEY (`user_id`)    REFERENCES `users` (`id`)    ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_cart_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `orders`
+  ADD CONSTRAINT `fk_orders_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `order_items`
+  ADD CONSTRAINT `fk_oi_order`   FOREIGN KEY (`order_id`)   REFERENCES `orders` (`id`)   ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_oi_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE RESTRICT;
+
+ALTER TABLE `products`
+  ADD CONSTRAINT `fk_products_brand`    FOREIGN KEY (`brand_id`)    REFERENCES `brands` (`id`)     ON DELETE SET NULL,
+  ADD CONSTRAINT `fk_products_category` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE SET NULL;
+
+ALTER TABLE `reviews`
+  ADD CONSTRAINT `fk_reviews_user`    FOREIGN KEY (`user_id`)    REFERENCES `users` (`id`)    ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_reviews_product` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `admin_logs`
+  ADD CONSTRAINT `fk_logs_admin` FOREIGN KEY (`admin_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `used_coupons`
+  ADD CONSTRAINT `fk_uc_user`   FOREIGN KEY (`user_id`)   REFERENCES `users` (`id`)   ON DELETE CASCADE,
+  ADD CONSTRAINT `fk_uc_coupon` FOREIGN KEY (`coupon_id`) REFERENCES `coupons` (`id`) ON DELETE CASCADE;
+
+ALTER TABLE `role_permissions`
+  ADD PRIMARY KEY (`role`, `permission_id`),
+  ADD CONSTRAINT `fk_rp_permission` FOREIGN KEY (`permission_id`) REFERENCES `permissions` (`id`) ON DELETE CASCADE;
+
+-- --------------------------------------------------------
+-- проебались меняем ниже бд. потом мб когда нибудь норм залью
+-- --------------------------------------------------------
+
+-- фильтр и сортировка по цене в каталоге (index.php, catalog_ajax.php)
+ALTER TABLE `products` ADD KEY `idx_price` (`price`);
+
+-- ORDER BY p.name ASC в каталоге
+ALTER TABLE `products` ADD KEY `idx_name` (`name`);
+
+-- personal.php: WHERE user_id = ? ORDER BY created_at DESC
+ALTER TABLE `orders` ADD KEY `idx_user_created` (`user_id`, `created_at`);
+
+-- register.php: WHERE email = ? AND code = ? AND created_at > ...
+ALTER TABLE `email_verifications` ADD KEY `idx_email_code` (`email`, `code`);
+
+-- getProductReviews(): WHERE product_id = ? ORDER BY created_at DESC
+ALTER TABLE `reviews` ADD KEY `idx_product_created` (`product_id`, `created_at`);
+
+UPDATE `products`
+SET `image` = REPLACE(`image`, '/AptekaWebSite/uploads/', '/uploads/')
+WHERE `image` LIKE '/AptekaWebSite/%';
+
+UPDATE `products`
+SET `image` = '/uploads/1777371379_5uwezceyd1umckzl9ns0we60hf38i5f4.png'
+WHERE `id` = 9;
+
+UPDATE `products`
+SET `image` = '/uploads/no-photo.jpg'
+WHERE `id` = 6;
