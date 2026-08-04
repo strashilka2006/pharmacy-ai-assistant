@@ -169,15 +169,15 @@ require "layout/header.php";
                 }
                 ?>
 
-                <?php if ($in_cart_qty > 0): ?>
-                    <div class="d-flex align-items-center gap-3 mb-4">
-                        <a href="qty_minus.php?id=<?= $id ?>&return=product.php?id=<?= $id ?>"
-                        class="btn btn-outline-dark rounded-pill px-4 fs-4">–</a>
-                        <span class="fw-bold fs-3"><?= $in_cart_qty ?></span>
-                        <a href="qty_plus.php?id=<?= $id ?>&return=product.php?id=<?= $id ?>"
-                        class="btn btn-outline-dark rounded-pill px-4 fs-4">+</a>
-                    </div>
-                <?php else: ?>
+                    <?php if ($in_cart_qty > 0): ?>
+                        <div class="d-flex align-items-center gap-3 mb-4">
+                            <a href="#" class="btn btn-outline-dark rounded-pill px-4 fs-4 qty-change"
+                               data-id="<?= $id ?>" data-action="minus">–</a>
+                            <span class="fw-bold fs-3"><?= $in_cart_qty ?></span>
+                            <a href="#" class="btn btn-outline-dark rounded-pill px-4 fs-4 qty-change"
+                               data-id="<?= $id ?>" data-action="plus">+</a>
+                        </div>
+                    <?php else: ?>
                     <a href="add_to_cart.php?id=<?= $product["id"] ?>&redirect=product.php?id=<?= $id ?>"
                     class="btn btn-outline-custom btn-lg px-5 py-3">
                         В корзину
