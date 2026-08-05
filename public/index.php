@@ -848,13 +848,17 @@ function showTyping(){const box=document.getElementById('aiChatMessages'),el=doc
 async function sendAiMessage(msg){
     addMsg('user',msg,[]);showTyping();
     document.getElementById('aiModalInput').disabled=true;
-    const fd=new FormData();fd.append('message',msg);
+    const fd=new FormData();fd.append('message',msg);fd.append('csrf',window.CSRF_TOKEN);
     try{
         const res=await fetch('chat_api.php',{method:'POST',body:fd});
         const data=await res.json();
         document.getElementById('aiTyping')?.remove();
         if(data.error==='ollama_unavailable')addMsg('bot','⚠️ Консультант временно недоступен.',[]);
-        else addMsg('bot',data.text||'Не удалось получить ответ',data.products||[]);
+        else {
+            let t = data.text || 'Не удалось получить ответ';
+            if (data.disclaimer) t += '\n\n⚠ ' + data.disclaimer;
+            addMsg('bot', t, data.products || []);
+        }
     }catch{document.getElementById('aiTyping')?.remove();addMsg('bot','⚠️ Ошибка соединения.',[]);}
     finally{document.getElementById('aiModalInput').disabled=false;document.getElementById('aiModalInput').focus()}
 }
