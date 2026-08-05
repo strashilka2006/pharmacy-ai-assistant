@@ -110,20 +110,33 @@ if (preg_match('/###MEDICINES###(.*?)(?:###END###|$)/s', $fullText, $m)) {
     }
 
     foreach ($medicines as $name) {
-        $name = trim($name, " \t\n\r-*\"'");
-        if (!$name) continue;
-
-        $stmt = $pdo->prepare("SELECT id, name, price, image, usage_info, composition, contraindications FROM products WHERE name = ? LIMIT 1");
-        $stmt->execute([$name]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$row) {
-            $stmt = $pdo->prepare("SELECT id, name, price, image, usage_info, composition, contraindications FROM products WHERE name LIKE ? LIMIT 1");
-            $stmt->execute(['%' . $name . '%']);
+            $name = trim($name, " \t\n\r-*\"'");
+            if (!$name) continue;
+    
+            $stmt = $pdo->prepare("SELECT id, name, price, image, prescription, usage_info, composition, contraindications FROM products WHERE name = ? LIMIT 1");
+            $stmt->execute([$name]);
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    
+            if (!$row) {
+                $stmt = $pdo->prepare("SELECT id, name, price, image, prescription, usage_info, composition, contraindications FROM products WHERE name LIKE ? LIMIT 1");
+                $stmt->execute(['%' . $name . '%']);
+                $row = $stmt->fetch(PDO::FETCH_ASSOC);
+            }
+    
+            if (!$row) continue;
+    
+            // рецептурный препарат. карточку не показываем, предупреждаем
+            if ((int)$row['prescription'] === 1) {
+                $hasRx = true;
+                continue;
+            }
+    
+            $products[] = $row;
         }
-
-        if ($row) $products[] = $row;
+    }
+    
+    if (!empty($hasRx)) {
+        $cleanText .= "\n\n⚠ Часть подходящих препаратов отпускается по рецепту — их может назначить только врач.";
     }
 }
 
