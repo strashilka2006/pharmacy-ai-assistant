@@ -63,7 +63,10 @@ function getProductLabels() {
     ];
 }
 
-// --- Автообновление статусов заказов (безопасная версия) ---
+if (!defined('ORDER_STATUS_STEP_SECONDS')) {
+    define('ORDER_STATUS_STEP_SECONDS', 60);
+}
+
 function updateUserOrderStatuses($pdo, $user_id) {
     $statuses = [
         0 => 'new',
@@ -74,35 +77,30 @@ function updateUserOrderStatuses($pdo, $user_id) {
         5 => 'ready_for_pickup'
     ];
 
-    // Берём все заказы пользователя, включая NULL статусы, исключая cancelled
     $stmt = $pdo->prepare("
         SELECT id, status, created_at
         FROM orders
         WHERE user_id = ?
-          AND (status IS NULL OR status <> 'cancelled')
+          AND (status IS NULL
+               OR status NOT IN ('cancelled', 'paid', 'pending_payment', 'delivered'))
     ");
     $stmt->execute([$user_id]);
     $orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     foreach ($orders as $order) {
-        // защита от битой даты
         $createdTimestamp = strtotime($order['created_at']);
         if ($createdTimestamp === false) {
             $createdTimestamp = time();
         }
 
-        // diff в секундах; если дата в будущем — ставим 0
         $diff = time() - $createdTimestamp;
         if ($diff < 0) $diff = 0;
 
-        // шаг каждые 10 секунд (тестовый режим). В продакшн заменишь на 60
-        $step = (int) floor($diff / 10);
+        $step = (int) floor($diff / ORDER_STATUS_STEP_SECONDS);
         if ($step < 0) $step = 0;
         if ($step > 5) $step = 5;
 
         $newStatus = $statuses[$step] ?? 'new';
-
-        // Нормализуем текущее значение из БД
         $currentRaw = $order['status'] ?? '';
         $currentTrim = trim((string)$currentRaw);
         $currentNormalized = $currentTrim === '' ? 'new' : strtolower($currentTrim);
