@@ -93,10 +93,10 @@ $brands = $pdo->query("SELECT id, name FROM brands ORDER BY name")->fetchAll(PDO
 
     <div class="card-body p-5">
         <?php if ($success): ?>
-            <div class="alert alert-success rounded-4 mb-4"><?= $success ?></div>
+            <div class="alert alert-success rounded-4 mb-4"><?= htmlspecialchars($success) ?></div>
         <?php endif; ?>
         <?php if ($error): ?>
-            <div class="alert alert-danger rounded-4 mb-4"><?= $error ?></div>
+            <div class="alert alert-danger rounded-4 mb-4"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
         <form method="post" enctype="multipart/form-data">
@@ -157,7 +157,7 @@ $brands = $pdo->query("SELECT id, name FROM brands ORDER BY name")->fetchAll(PDO
                 <div class="col-md-4">
                     <label class="form-label fw-bold">На складе</label>
                     <input type="number" name="stock" class="form-control" 
-                           value="<?= $_POST["stock"] ?? "0" ?>" min="0" required>
+                           value="<?= htmlspecialchars($_POST["stock"] ?? "0") ?>" min="0" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-bold">Метка</label>
@@ -166,7 +166,7 @@ $brands = $pdo->query("SELECT id, name FROM brands ORDER BY name")->fetchAll(PDO
                         <?php foreach ($labels as $k => $v): ?>
                             <option value="<?= $k ?>" 
                                 <?= ($k === ($_POST["label"] ?? "")) ? "selected" : "" ?>>
-                                <?= $v ?>
+                                <?= htmlspecialchars($v) ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
