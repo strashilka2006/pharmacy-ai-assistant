@@ -171,7 +171,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     <select name="label" class="form-select">
                         <option value="">—</option>
                         <?php foreach ($labels as $k => $v): ?>
-                            <option value="<?= $k ?>" <?= ($product["label"] ?? '') === $k ? 'selected' : '' ?>><?= $v ?></option>
+                            <option value="<?= $k ?>" <?= ($product["label"] ?? '') === $k ? 'selected' : '' ?>><?= htmlspecialchars($v) ?></option>
                         <?php endforeach; ?>
                     </select>
                 </div>
