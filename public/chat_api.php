@@ -1,6 +1,7 @@
 <?php
 require "../app/bootstrap.php";
 header('Content-Type: application/json; charset=utf-8');
+checkCsrf();
 
 $userMessage = trim($_POST['message'] ?? '');
 if (!$userMessage) { echo json_encode(['error' => 'empty']); exit; }
@@ -144,6 +145,7 @@ $cleanText = preg_replace('/<think>.*?<\/think>/s', '', $cleanText);
 $cleanText = trim($cleanText);
 
 echo json_encode([
-    'text'     => $cleanText,
-    'products' => $products,
+    'text'       => $cleanText,
+    'products'   => $products,
+    'disclaimer' => 'ИИ-консультант не заменяет врача или фармацевта. При симптомах обратитесь к специалисту.',
 ], JSON_UNESCAPED_UNICODE);
