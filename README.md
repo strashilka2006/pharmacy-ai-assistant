@@ -1,5 +1,11 @@
 # Интернет-аптека на PHP с ИИ-консультантом на локальной LLM (Ollama + Qwen3)
 Проект, разработанный во время преддипломной практики в колледже в качестве дипломного проекта. Проект представляет собой сайт аптеки с ключевыми функциями, требующимися для полноценной работы.
+
+![PHP](https://img.shields.io/badge/PHP-8-777BB4?logo=php&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-MariaDB%2010.4-4479A1?logo=mysql&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-qwen3%3A8b-black?logo=ollama)
+![License](https://img.shields.io/github/license/strashilka2006/pharmacy-ai-assistant)
+![Last commit](https://img.shields.io/github/last-commit/strashilka2006/pharmacy-ai-assistant)
 ## ИИ-консультант
 Покупатель описывает симптом обычными словами, а консультант подбирает препараты из каталога и коротко поясняет способ применения и противопоказания.
 
