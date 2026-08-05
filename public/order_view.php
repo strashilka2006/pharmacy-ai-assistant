@@ -33,7 +33,9 @@ if (!$order) {
 
 // Мапа шагов
 $statusMap = [
+    'pending_payment'  => 0,
     'new'              => 0,
+    'paid'             => 1,
     'processing'       => 1,
     'shipped'          => 2,
     'at_hub'           => 3,
@@ -49,7 +51,8 @@ $currentStep = $statusMap[$order['status']] ?? 0;
 $progressPercent = ($currentStep >= 0) ? ($currentStep / 5) * 100 : 0;
 
 // Отмена заказа
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel']) && $order['status'] === 'new') {
+$cancellable = ['new', 'processing', 'pending_payment'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cancel']) && in_array($order['status'], $cancellable, true)) {
     checkCsrf();
     $pdo->prepare("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?")
         ->execute([$orderId]);
