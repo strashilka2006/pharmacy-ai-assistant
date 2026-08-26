@@ -1,0 +1,68 @@
+services:
+
+  # ---------- База данных ----------
+  db:
+    image: mariadb:10.11          # у тебя в дампе 10.4, 10.11 её понимает
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: root
+      MARIADB_DATABASE: apteka     # база создастся сама
+      MARIADB_USER: apteka
+      MARIADB_PASSWORD: apteka
+    volumes:
+      # Именованный том: данные переживают перезапуск и пересборку контейнера
+      - db_data:/var/lib/mysql
+      # Всё из этой папки исполняется при ПЕРВОМ старте (когда том пустой).
+      # Твой дамп без CREATE DATABASE — попадёт ровно в apteka.
+      - ./schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      # Пока база не ответит, app стартовать не будет
+      test: ["CMD-SHELL", "mariadb-admin ping -h 127.0.0.1 -u root -p$$MARIADB_ROOT_PASSWORD --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # ---------- Приложение ----------
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "8080:80"                  # снаружи localhost:8080 -> внутри порт 80
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      # db — это имя сервиса выше. Docker сам резолвит его в нужный IP.
+      DB_HOST: db
+      DB_NAME: apteka
+      DB_USER: apteka
+      DB_PASS: apteka
+
+      # host.docker.internal = машина-хозяин. Ollama крутится на ней, не в контейнере.
+      OLLAMA_URL: http://host.docker.internal:11434/api/chat
+      OLLAMA_MODEL: qwen3:8b
+
+      SMTP_HOST: smtp.gmail.com
+      SMTP_USER: ""
+      SMTP_PASS: ""
+      SMTP_PORT: "587"
+
+      YOOKASSA_SHOP_ID: ""
+      YOOKASSA_SECRET_KEY: ""
+    extra_hosts:
+      # На Linux host.docker.internal сам по себе не работает, эта строка его чинит.
+      # На Windows/Mac лишней не будет.
+      - "host.docker.internal:host-gateway"
+    volumes:
+      # Загруженные картинки не должны пропадать при пересборке образа
+      - ./public/uploads:/var/www/html/public/uploads
+
+      # --- Режим разработки ---
+      # Раскомментируй две строки ниже, чтобы правки в коде подхватывались
+      # сразу, без docker compose build. Второй том нужен, чтобы папка vendor
+      # из образа не затёрлась пустотой с хоста.
+      # - ./:/var/www/html
+      # - /var/www/html/vendor
+
+volumes:
+  db_data:
