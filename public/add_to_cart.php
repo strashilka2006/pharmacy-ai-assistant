@@ -3,7 +3,7 @@ require "../app/bootstrap.php";
 
 // Обязательно залогинен, иначе — в логин
 if (!isLogged()) {
-    header("Location: " . BASE_URL . "/public/login.php?return=" . urlencode($_SERVER['REQUEST_URI']));
+    header("Location: " . BASE_URL . "/login.php?return=" . urlencode($_SERVER['REQUEST_URI']));
     exit;
 }
 

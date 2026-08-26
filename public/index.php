@@ -57,7 +57,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 <!-- HERO -->
 <section class="hero position-relative text-white text-center d-flex align-items-center justify-content-center"
-         style="background: linear-gradient(rgba(216, 221, 140, 0.23), rgba(0, 0, 0, 0)), url('<?= BASE_URL ?>/public/uploads/hero.jpg') center/cover no-repeat; height: 70vh; min-height: 520px;">
+         style="background: linear-gradient(rgba(216, 221, 140, 0.23), rgba(0, 0, 0, 0)), url('<?= BASE_URL ?>/uploads/hero.jpg') center/cover no-repeat; height: 70vh; min-height: 520px;">
     <div class="container">
         <h1 class="display-3 fw-bold mb-4">ЗДОРОВЬЕ НАЧИНАЕТСЯ ЗДЕСЬ</h1>
         <p class="lead fs-2 mb-4">БОЛЕЕ 5000 ТОВАРОВ ДЛЯ ВАШЕГО ЗДОРОВЬЯ С ДОСТАВКОЙ ПО ВСЕЙ РОССИИ</p>
@@ -426,7 +426,7 @@ $products = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <span class="brand-slide-label"><?= htmlspecialchars($slide['brand']['name']) ?></span>
                 <div class="brand-slide-products">
                     <?php foreach ($slide['products'] as $p): ?>
-                    <a href="<?= BASE_URL ?>/public/product.php?id=<?= $p['id'] ?>" class="brand-mini-card">
+                    <a href="<?= BASE_URL ?>/product.php?id=<?= $p['id'] ?>" class="brand-mini-card">
                         <img src="<?= htmlspecialchars(imgUrl($p['image'])) ?>"
                              alt="<?= htmlspecialchars($p['name']) ?>">
                         <div class="brand-mini-card-info">

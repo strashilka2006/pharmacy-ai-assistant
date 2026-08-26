@@ -2,7 +2,7 @@
 require "../app/bootstrap.php";
 
 if (!isLogged()) {
-    header("Location: " . BASE_URL . "/public/login.php");
+    header("Location: " . BASE_URL . "/login.php");
     exit;
 }
 
@@ -74,7 +74,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['place_order'])) {
                     'capture' => true,
                     'confirmation' => [
                         'type'       => 'redirect',
-                        'return_url' => (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . BASE_URL . '/public/payment_return.php?order_id=' . $order_id,
+                        'return_url' => (!empty($_SERVER['HTTPS']) ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . BASE_URL . '/payment_return.php?order_id=' . $order_id,
                     ],
                     'description' => 'Заказ №' . $order_id . ' — Аптека',
                     'metadata'    => ['order_id' => $order_id],

@@ -36,7 +36,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !isset($_POST["remove"])) {
         $logo   = $brand['logo']   ?? null;
         $banner = $brand['banner'] ?? null;
 
-        $uploadDir = __DIR__ . "/../../uploads/brands/";
+        $uploadDir = __DIR__ . "/../uploads/brands/";
         if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
 
         $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];

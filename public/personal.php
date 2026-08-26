@@ -2,7 +2,7 @@
 require "../app/bootstrap.php";
 
 if (!isset($_SESSION["user_id"])) {
-    header("Location: " . BASE_URL . "/public/login.php");
+    header("Location: " . BASE_URL . "/login.php");
     exit;
 }
 
@@ -486,7 +486,7 @@ require "layout/header.php";
     <div class="prof-section">
         <div class="prof-section-title">Фото профиля</div>
         <div class="prof-avatar-wrap">
-            <img src="<?= BASE_URL ?>/public/uploads/<?= htmlspecialchars($user['avatar'] ?? 'default.png') ?>"
+            <img src="<?= BASE_URL ?>/uploads/<?= htmlspecialchars($user['avatar'] ?? 'default.png') ?>"
                  class="prof-avatar-img" alt="Аватар">
             <form method="post" enctype="multipart/form-data" class="prof-avatar-form">
                 <?= csrfField() ?>
@@ -608,7 +608,7 @@ require "layout/header.php";
                 <span class="prof-empty-icon">🧺</span>
                 У вас пока нет заказов
                 <br><br>
-                <a href="<?= BASE_URL ?>/public/" class="reg-btn sm">Перейти в каталог →</a>
+                <a href="<?= BASE_URL ?>/" class="reg-btn sm">Перейти в каталог →</a>
             </div>
         <?php else: ?>
             <div style="overflow-x:auto;">
@@ -691,7 +691,7 @@ require "layout/header.php";
 
     <!-- Выход -->
     <div style="text-align:right;">
-        <a href="<?= BASE_URL ?>/public/logout.php" class="reg-btn danger">Выйти из аккаунта</a>
+        <a href="<?= BASE_URL ?>/logout.php" class="reg-btn danger">Выйти из аккаунта</a>
     </div>
 
 </div>

@@ -35,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (!empty($_POST["photo_url"])) {
             $image = trim($_POST["photo_url"]);
         } elseif (!empty($_FILES["photo"]["name"])) {
-            $dir = __DIR__ . "/../../uploads/";
+            $dir = __DIR__ . "/../uploads/";
             if (!is_dir($dir)) mkdir($dir, 0777, true);
 
             $ext = strtolower(pathinfo($_FILES["photo"]["name"], PATHINFO_EXTENSION));

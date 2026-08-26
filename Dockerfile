@@ -37,6 +37,6 @@ RUN composer dump-autoload --optimize \
     # config.php лежит в .gitignore, поэтому в образе его нет — создаём из примера
     && cp -n app/config.example.php app/config.php \
     # Apache работает от www-data, ему нужны права на запись в папки загрузок
-    && chown -R www-data:www-data public/uploads uploads
+    && chown -R www-data:www-data public/uploads
 
 EXPOSE 80

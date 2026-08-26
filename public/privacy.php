@@ -200,7 +200,7 @@ require __DIR__ . "/layout/header.php";
     </div>
 
     <div class="doc-footer">
-        <a href="<?= BASE_URL ?>/public/index.php">← Вернуться в каталог</a>
+        <a href="<?= BASE_URL ?>/index.php">← Вернуться в каталог</a>
         <span class="copy">&copy; <?= date("Y") ?> Аптека. Все права защищены.</span>
     </div>
 
