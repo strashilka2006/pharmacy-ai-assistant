@@ -69,7 +69,7 @@ $systemPrompt = <<<PROMPT
 PROMPT;
 
 $payload = json_encode([
-    'model'  => 'qwen3:8b',
+    'model'  => $ollama['model'],
     'stream' => false,
     'think'  => false,
     'messages' => [
@@ -78,7 +78,7 @@ $payload = json_encode([
     ]
 ], JSON_UNESCAPED_UNICODE);
 
-$ch = curl_init('http://localhost:11434/api/chat');
+$ch = curl_init($ollama['url']);
 curl_setopt_array($ch, [
     CURLOPT_RETURNTRANSFER => true,
     CURLOPT_POST           => true,
