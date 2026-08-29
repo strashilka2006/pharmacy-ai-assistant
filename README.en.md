@@ -6,6 +6,7 @@ A project built during my pre-graduation internship at college as a diploma proj
 ![PHP](https://img.shields.io/badge/PHP-8-777BB4?logo=php&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-MariaDB%2010.4-4479A1?logo=mysql&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-qwen3%3A8b-black?logo=ollama)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/github/license/strashilka2006/pharmacy-ai-assistant)
 ![Last commit](https://img.shields.io/github/last-commit/strashilka2006/pharmacy-ai-assistant)
 
@@ -132,24 +133,60 @@ Order state is stored in the `status` field and advances as delivery progresses:
 
 ## Getting started
 
-**Requirements:** PHP 8.0+ (with the `pdo_mysql`, `curl` and `mbstring` extensions), MySQL/MariaDB, Composer and [Ollama](https://ollama.com). The `qwen3:8b` model weighs about 5 GB, so you'll want at least 8 GB of RAM.
+**All you need is [Docker](https://www.docker.com/products/docker-desktop/) and [Ollama](https://ollama.com).** PHP, Composer and MySQL are not required — they live inside the containers.
+
+Ollama stays on the host: the `qwen3:8b` model weighs about 5 GB, and baking it into the image makes no sense. You'll want at least 8 GB of RAM.
 
 ```bash
 git clone https://github.com/strashilka2006/pharmacy-ai-assistant.git
 cd pharmacy-ai-assistant
 
-composer install
-
-mysql -u root -p -e "CREATE DATABASE apteka CHARACTER SET utf8mb4"
-mysql -u root -p apteka < schema.sql
-
 ollama pull qwen3:8b
 ollama serve
+
+docker compose up --build
 ```
 
-Without `composer install` the project won't start — the repository has no `vendor/` folder, so PHP won't find `vendor/autoload.php`.
+The site comes up at `http://localhost:8080`. The first build takes a few minutes — it pulls the PHP and MariaDB images, installs extensions and lets Composer fetch dependencies. After that, startup takes seconds.
 
-Copy `app/config.example.php` to `app/config.php` and fill in your credentials: MySQL, YooKassa keys and SMTP. `config.php` is in `.gitignore` and never reaches the repository.
+Two containers come up. `db` is MariaDB 10.11; on first start it creates the `apteka` database and applies `schema.sql` by itself. `app` is PHP 8.2 with Apache, with the document root set to `public/`, so `app/`, `vendor/` and `schema.sql` are unreachable from the browser. The `app` container only starts once the database passes its health check, so there's no race on the first run.
+
+Database, Ollama, SMTP and YooKassa credentials are set through environment variables in `docker-compose.yml`:
+
+```yaml
+DB_HOST: db
+OLLAMA_URL: http://host.docker.internal:11434/api/chat
+OLLAMA_MODEL: qwen3:8b
+SMTP_USER: ""
+SMTP_PASS: ""
+YOOKASSA_SHOP_ID: ""
+YOOKASSA_SECRET_KEY: ""
+```
+
+`host.docker.internal` points at the host machine. Inside a container `localhost` refers to the container itself, so Ollama wouldn't be found there.
+
+Leaving SMTP and YooKassa empty doesn't break the project: the storefront, catalog, cart and consultant all work — only e-mail and payments drop out.
+
+Handy:
+
+```bash
+docker compose logs -f app     # Apache logs and PHP errors
+docker compose down            # stop
+docker compose down -v         # stop and wipe the database
+```
+
+`schema.sql` runs only on the first start, while the database volume is still empty. If you edit the dump, you need `down -v` or the changes won't be picked up.
+
+> **It still works without Docker.** The config reads environment variables and falls back to local defaults when they're absent, so the old way is still there. You'll need PHP 8.0+ with the `pdo_mysql`, `curl`, `mbstring` and `exif` extensions, plus MySQL/MariaDB and Composer:
+> ```bash
+> composer install
+>
+> mysql -u root -p -e "CREATE DATABASE apteka CHARACTER SET utf8mb4"
+> mysql -u root -p apteka < schema.sql
+> ```
+> Without `composer install` the project won't start — the repository has no `vendor/` folder, so PHP won't find `vendor/autoload.php`.
+>
+> Then copy `app/config.example.php` to `app/config.php` and fill in your credentials: MySQL, YooKassa keys and SMTP. `config.php` is in `.gitignore` and never reaches the repository. Point your web server's document root at `public/`.
 
 Test admin login: `admin@apteka.local` / `admin123`
 
@@ -177,8 +214,6 @@ The consultant's rate limit lives in the session, so it can be bypassed by clear
 The catalog endpoint returns everything at once, with no pagination — a growing product count will need `LIMIT` and paged output.
 
 Product categories exist in the database but aren't used in the UI: filtering works by brand and price.
-
-Images are stored in two directories (`uploads/` at the root and `public/uploads/`) — a historical accident. Worth consolidating into one and moving the document root to `public/`.
 
 ## Notes for anyone deploying this
 
@@ -412,10 +447,7 @@ apteka/
 │   ├── bootstrap.php                session, connections, order status refresh
 │   ├── config.example.php           config template (copy to config.php)
 │   └── functions.php                helpers, CSRF, permission checks
-├── css/
-│   ├── hero.png                     home page background
-│   └── style.css                    styles
-├── public/                          public storefront
+├── public/                          document root, public storefront
 │   ├── admin/                       admin panel
 │   │   ├── index.php                dashboard
 │   │   ├── products.php             product list
@@ -427,10 +459,14 @@ apteka/
 │   │   └── layout/
 │   │       ├── admin_header.php     admin header
 │   │       └── admin_footer.php     admin footer
+│   ├── css/
+│   │   ├── hero.png                 home page background
+│   │   └── style.css                styles
 │   ├── layout/
 │   │   ├── header.php               storefront header, CSRF token for AJAX
 │   │   └── footer.php               storefront footer, cart scripts
-│   ├── uploads/                     images (user avatars)
+│   ├── uploads/                     product images and user avatars
+│   │   └── brands/                  brand logos and banners
 │   ├── add_to_cart.php              add a product to the cart
 │   ├── ajax_qty.php                 change cart quantity via AJAX
 │   ├── brand.php                    brand page
@@ -449,13 +485,15 @@ apteka/
 │   ├── product.php                  product page
 │   ├── register.php                 registration with email code confirmation
 │   └── remove_from_cart.php         remove a product from the cart
-├── uploads/                         product images
-│   └── brands/                      brand logos and banners
+├── .dockerignore                    what stays out of the image
 ├── .gitignore
+├── Dockerfile                       application image: PHP 8.2 + Apache
 ├── LICENSE
 ├── README.md
+├── README.en.md                     English version
 ├── composer.json                    project dependencies
 ├── composer.lock                    locked versions (PHPMailer)
+├── docker-compose.yml               app + MariaDB, one-command startup
 └── schema.sql                       database dump
 ```
 </details>
