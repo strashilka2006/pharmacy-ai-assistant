@@ -6,6 +6,7 @@
 ![PHP](https://img.shields.io/badge/PHP-8-777BB4?logo=php&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-MariaDB%2010.4-4479A1?logo=mysql&logoColor=white)
 ![Ollama](https://img.shields.io/badge/Ollama-qwen3%3A8b-black?logo=ollama)
+![Docker](https://img.shields.io/badge/Docker-compose-2496ED?logo=docker&logoColor=white)
 ![License](https://img.shields.io/github/license/strashilka2006/pharmacy-ai-assistant)
 ![Last commit](https://img.shields.io/github/last-commit/strashilka2006/pharmacy-ai-assistant)
 
@@ -130,24 +131,60 @@ echo json_encode($products);
 
 ## Запуск
 
-**Требования:** PHP 8.0+ (нужны расширения `pdo_mysql`, `curl`, `mbstring`), MySQL/MariaDB, Composer и [Ollama](https://ollama.com). Модель `qwen3:8b` весит около 5 ГБ, для комфортной работы нужно от 8 ГБ оперативной памяти.
+**Требуется только [Docker](https://www.docker.com/products/docker-desktop/) и [Ollama](https://ollama.com).** PHP, Composer и MySQL ставить не нужно — они живут внутри контейнеров.
+
+Ollama остаётся на хосте: модель `qwen3:8b` весит около 5 ГБ, и запекать её в образ смысла нет. Для комфортной работы нужно от 8 ГБ оперативной памяти.
 
 ```bash
 git clone https://github.com/strashilka2006/pharmacy-ai-assistant.git
 cd pharmacy-ai-assistant
 
-composer install
-
-mysql -u root -p -e "CREATE DATABASE apteka CHARACTER SET utf8mb4"
-mysql -u root -p apteka < schema.sql
-
 ollama pull qwen3:8b
 ollama serve
+
+docker compose up --build
 ```
 
-Без `composer install` проект не запустится — в репозитории нет папки `vendor/`, и PHP не найдёт `vendor/autoload.php`.
+Сайт поднимется на `http://localhost:8080`. Первая сборка занимает несколько минут — качаются образы PHP и MariaDB, ставятся расширения, Composer тянет зависимости. Дальше запуск занимает секунды.
 
-Скопируй `app/config.example.php` в `app/config.php` и впиши свои доступы: MySQL, ключи ЮKassa и SMTP. Файл `config.php` в `.gitignore` и в репозиторий не попадает.
+Поднимается два контейнера. `db` — MariaDB 10.11, при первом старте сама создаёт базу `apteka` и накатывает `schema.sql`. `app` — PHP 8.2 с Apache, корнем веб-сервера назначена папка `public/`, поэтому `app/`, `vendor/` и `schema.sql` из браузера недоступны. Контейнер `app` стартует только после того, как база пройдёт проверку живности, так что гонки при первом запуске нет.
+
+Доступы к базе, Ollama, SMTP и ЮKassa задаются переменными окружения в `docker-compose.yml`:
+
+```yaml
+DB_HOST: db
+OLLAMA_URL: http://host.docker.internal:11434/api/chat
+OLLAMA_MODEL: qwen3:8b
+SMTP_USER: ""
+SMTP_PASS: ""
+YOOKASSA_SHOP_ID: ""
+YOOKASSA_SECRET_KEY: ""
+```
+
+`host.docker.internal` — это машина-хозяин. Внутри контейнера `localhost` указывает на сам контейнер, и Ollama по нему не найдётся.
+
+Пустые SMTP и ЮKassa проект не ломают: витрина, каталог, корзина и консультант работают, отваливаются только письма и оплата.
+
+Полезное:
+
+```bash
+docker compose logs -f app     # логи Apache и ошибки PHP
+docker compose down            # остановить
+docker compose down -v         # остановить и стереть базу
+```
+
+`schema.sql` исполняется только при первом старте, пока том с базой пустой. Если правишь дамп — нужен `down -v`, иначе изменения не подхватятся.
+
+> **Без Docker тоже работает.** Конфиг читает переменные окружения, а при их отсутствии откатывается на локальные значения, так что старый способ никуда не делся. Понадобится PHP 8.0+ с расширениями `pdo_mysql`, `curl`, `mbstring`, `exif`, плюс MySQL/MariaDB и Composer:
+> ```bash
+> composer install
+>
+> mysql -u root -p -e "CREATE DATABASE apteka CHARACTER SET utf8mb4"
+> mysql -u root -p apteka < schema.sql
+> ```
+> Без `composer install` проект не запустится — в репозитории нет папки `vendor/`, и PHP не найдёт `vendor/autoload.php`.
+>
+> Дальше скопировать `app/config.example.php` в `app/config.php` и вписать свои доступы: MySQL, ключи ЮKassa и SMTP. Файл `config.php` в `.gitignore` и в репозиторий не попадает. Корнем веб-сервера нужно назначить папку `public/`.
 
 Тестовый вход в админку: `admin@apteka.local` / `admin123`
 
@@ -175,8 +212,6 @@ ollama serve
 Каталог отдаётся AJAX-обработчиком целиком, без пагинации — при росте числа товаров понадобится `LIMIT` и постраничная выдача.
 
 Категории товаров заведены в базе, но в интерфейсе не используются: фильтрация идёт по брендам и цене.
-
-Изображения хранятся в двух каталогах (`uploads/` в корне и `public/uploads/`) — исторически так сложилось, стоит свести к одному и перевести document root на `public/`.
 
 ## Заметки для тех, кто будет разворачивать
 
@@ -410,10 +445,7 @@ apteka/
 │   ├── bootstrap.php                сессия, подключения, автообновление статусов
 │   ├── config.example.php           образец конфига (копируется в config.php)
 │   └── functions.php                вспомогательные функции, CSRF, проверка прав
-├── css/
-│   ├── hero.png                     фоновое изображение главной
-│   └── style.css                    стили
-├── public/                          общедоступная часть (витрина)
+├── public/                          корень веб-сервера, общедоступная часть
 │   ├── admin/                       административная панель
 │   │   ├── index.php                сводная страница
 │   │   ├── products.php             список товаров
@@ -425,10 +457,14 @@ apteka/
 │   │   └── layout/
 │   │       ├── admin_header.php     шапка админки
 │   │       └── admin_footer.php     подвал админки
+│   ├── css/
+│   │   ├── hero.png                 фоновое изображение главной
+│   │   └── style.css                стили
 │   ├── layout/
 │   │   ├── header.php               шапка витрины, CSRF-токен для AJAX
 │   │   └── footer.php               подвал витрины, скрипты корзины
-│   ├── uploads/                     изображения (аватары пользователей)
+│   ├── uploads/                     изображения товаров и аватары
+│   │   └── brands/                  логотипы и баннеры брендов
 │   ├── add_to_cart.php              добавление товара в корзину
 │   ├── ajax_qty.php                 изменение количества в корзине через AJAX
 │   ├── brand.php                    страница бренда
@@ -447,13 +483,15 @@ apteka/
 │   ├── product.php                  страница товара
 │   ├── register.php                 регистрация с подтверждением по коду
 │   └── remove_from_cart.php         удаление товара из корзины
-├── uploads/                         изображения товаров
-│   └── brands/                      логотипы и баннеры брендов
+├── .dockerignore                    что не копируется в образ
 ├── .gitignore
+├── Dockerfile                       образ приложения: PHP 8.2 + Apache
 ├── LICENSE
 ├── README.md
+├── README.en.md                     английская версия
 ├── composer.json                    зависимости проекта
 ├── composer.lock                    зафиксированные версии (PHPMailer)
+├── docker-compose.yml               связка app + MariaDB, запуск одной командой
 └── schema.sql                       дамп базы данных
 ```
 </details>
