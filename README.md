@@ -7,7 +7,7 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-🇷🇺 Русский
+🇷🇺 Русский · [🇬🇧 English](README.en.md)
 
 # Интернет-аптека на Laravel с ИИ-консультантом на локальной LLM (Ollama + Qwen3)
 
